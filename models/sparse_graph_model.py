@@ -173,7 +173,7 @@ class Sparse_Graph_Model(ABC):
         for layer_idx in range(self.params['graph_num_layers']):
             with tf.variable_scope('gnn_layer_%i' % layer_idx):
                 cur_node_representations = \
-                    tf.nn.dropout(cur_node_representations, keep_prob=1.0 - self.__placeholders['graph_layer_input_dropout_keep_prob'])
+                    tf.nn.dropout(cur_node_representations, keep_prob=self.__placeholders['graph_layer_input_dropout_keep_prob'])
                 if layer_idx % self.params['graph_residual_connection_every_num_layers'] == 0:
                     t = cur_node_representations
                     if layer_idx > 0:
