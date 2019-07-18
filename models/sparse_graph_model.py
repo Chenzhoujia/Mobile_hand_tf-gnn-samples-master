@@ -252,7 +252,7 @@ class Sparse_Graph_Model(ABC):
                     data_fold: DataFold,
                     quiet: Optional[bool] = False,
                     summary_writer: Optional[tf.summary.FileWriter] = None) \
-            -> Tuple[float, List[Dict[str, Any]], int, float, float, float]:
+            -> Tuple[float, List[Dict[str, Any]], int, float, float, float, dict]:
         batch_iterator = self.task.make_minibatch_iterator(
             data, data_fold, self.__placeholders, self.params['max_nodes_in_batch'])
         batch_iterator = ThreadedIterator(batch_iterator, max_queue_size=5)
@@ -276,6 +276,11 @@ class Sparse_Graph_Model(ABC):
                 fetch_dict['total_num_graphs'] = self.__ops['total_num_graphs']
             if data_fold == DataFold.TRAIN:
                 fetch_dict['train_step'] = self.__ops['train_step']
+            #增加输入、输出、标签，三个节点以供可视化
+            fetch_dict['initial_node_features'] = self.__placeholders['initial_node_features']
+            fetch_dict['target_values'] = self.__placeholders['target_values']
+            fetch_dict['final_output_node_representations'] = self.__ops['final_output_node_representations']
+
             fetch_results = self.sess.run(fetch_dict, feed_dict=batch_data.feed_dict)
             epoch_loss += fetch_results['task_metrics']['loss'] * batch_data.num_graphs
             task_metric_results.append(fetch_results['task_metrics'])
@@ -294,7 +299,8 @@ class Sparse_Graph_Model(ABC):
         graphs_per_sec = processed_graphs / epoch_time
         nodes_per_sec = processed_nodes / epoch_time
         edges_per_sec = processed_edges / epoch_time
-        return per_graph_loss, task_metric_results, processed_graphs, graphs_per_sec, nodes_per_sec, edges_per_sec
+        return per_graph_loss, task_metric_results, processed_graphs, graphs_per_sec, nodes_per_sec, edges_per_sec, \
+               fetch_results
 
     def log_line(self, msg):
         with open(self.log_file, 'a') as log_fh:
@@ -315,7 +321,7 @@ class Sparse_Graph_Model(ABC):
             for epoch in range(1, self.params['max_epochs'] + 1):
                 self.log_line("== Epoch %i" % epoch)
 
-                train_loss, train_task_metrics, train_num_graphs, train_graphs_p_s, train_nodes_p_s, train_edges_p_s = \
+                train_loss, train_task_metrics, train_num_graphs, train_graphs_p_s, train_nodes_p_s, train_edges_p_s, _ = \
                     self.__run_epoch("epoch %i (training)" % epoch,
                                      self.task._loaded_data[DataFold.TRAIN],
                                      DataFold.TRAIN,
@@ -328,7 +334,7 @@ class Sparse_Graph_Model(ABC):
                                  self.task.pretty_print_epoch_task_metrics(train_task_metrics, train_num_graphs),
                                  train_graphs_p_s, train_nodes_p_s, train_edges_p_s))
 
-                valid_loss, valid_task_metrics, valid_num_graphs, valid_graphs_p_s, valid_nodes_p_s, valid_edges_p_s = \
+                valid_loss, valid_task_metrics, valid_num_graphs, valid_graphs_p_s, valid_nodes_p_s, valid_edges_p_s, _ = \
                     self.__run_epoch("epoch %i (validation)" % epoch,
                                      self.task._loaded_data[DataFold.VALIDATION],
                                      DataFold.VALIDATION,
@@ -362,7 +368,7 @@ class Sparse_Graph_Model(ABC):
             data = self.task._loaded_data.get(DataFold.TEST)
             if data is None:
                 data = self.task.load_eval_data_from_path(path)
-            test_loss, test_task_metrics, test_num_graphs, _, _, _ = \
+            test_loss, test_task_metrics, test_num_graphs, _, _, _, self.fetch_results = \
                 self.__run_epoch("Test", data, DataFold.TEST, quiet=quiet)
             if not quiet:
                 print("\r\x1b[K", end='')

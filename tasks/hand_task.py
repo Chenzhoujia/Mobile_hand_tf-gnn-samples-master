@@ -180,6 +180,7 @@ class Hand_Task(Sparse_Graph_Task):
 
                 # 计算loss
                 per_graph_outputs = per_node_gated_outputs
+                model_ops['final_output_node_representations'] = per_graph_outputs
 
                 per_graph_errors = per_graph_outputs - placeholders['target_values']
                 task_metrics['abs_err_task%i' % task_id] = tf.reduce_sum(tf.abs(per_graph_errors))
