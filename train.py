@@ -22,11 +22,11 @@ import json
 import os
 import sys
 import time
-
+import pickle
 from docopt import docopt
 from dpu_utils.utils import run_and_debug, RichPath, git_tag_run
 
-from utils.model_utils import name_to_model_class, name_to_task_class
+from utils.model_utils import name_to_model_class, name_to_task_class, restore
 from test import test
 
 
@@ -85,6 +85,9 @@ def run(args):
     model.log_line(" Using the following model params: %s" % json.dumps(model_params))
 
     model.initialize_model()
+    with open('./trained_models/HAND_GEN_GGNN_2019-07-18-00-19-10_16496_best_model.pickle', 'rb') as in_file:
+        data_to_load = pickle.load(in_file)
+    model.load_weights(data_to_load['weights'])
     model.train(quiet=args.get('--quiet'), tf_summary_path=args.get('--tensorboard'))
 
     if args.get('--run-test'):

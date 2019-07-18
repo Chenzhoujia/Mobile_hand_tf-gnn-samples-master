@@ -80,7 +80,7 @@ class Hand_Task(Sparse_Graph_Task):
 
     def load_eval_data_from_path(self, path: RichPath) -> Iterable[Any]:
         if path.path == self.default_data_path():
-            path = path.join("test.jsonl.gz")
+            path = path.join("hand_test.pkl")
         return self.__load_data(path)
 
     def __load_data(self, data_file: RichPath) -> List[GraphSample]:
