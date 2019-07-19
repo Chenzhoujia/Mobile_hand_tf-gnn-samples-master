@@ -280,6 +280,7 @@ class Sparse_Graph_Model(ABC):
             fetch_dict['initial_node_features'] = self.__placeholders['initial_node_features']
             fetch_dict['target_values'] = self.__placeholders['target_values']
             fetch_dict['final_output_node_representations'] = self.__ops['final_output_node_representations']
+            fetch_dict['initial_node_features_select'] = self.__ops['initial_node_features_select']
 
             fetch_results = self.sess.run(fetch_dict, feed_dict=batch_data.feed_dict)
             epoch_loss += fetch_results['task_metrics']['loss'] * batch_data.num_graphs
@@ -321,7 +322,7 @@ class Sparse_Graph_Model(ABC):
             for epoch in range(1, self.params['max_epochs'] + 1):
                 self.log_line("== Epoch %i" % epoch)
 
-                train_loss, train_task_metrics, train_num_graphs, train_graphs_p_s, train_nodes_p_s, train_edges_p_s, _ = \
+                train_loss, train_task_metrics, train_num_graphs, train_graphs_p_s, train_nodes_p_s, train_edges_p_s, fetch_results = \
                     self.__run_epoch("epoch %i (training)" % epoch,
                                      self.task._loaded_data[DataFold.TRAIN],
                                      DataFold.TRAIN,
@@ -333,6 +334,7 @@ class Sparse_Graph_Model(ABC):
                               % (train_loss,
                                  self.task.pretty_print_epoch_task_metrics(train_task_metrics, train_num_graphs),
                                  train_graphs_p_s, train_nodes_p_s, train_edges_p_s))
+                self.log_line(" select point: "+str(np.sort(fetch_results['initial_node_features_select'])))
 
                 valid_loss, valid_task_metrics, valid_num_graphs, valid_graphs_p_s, valid_nodes_p_s, valid_edges_p_s, _ = \
                     self.__run_epoch("epoch %i (validation)" % epoch,

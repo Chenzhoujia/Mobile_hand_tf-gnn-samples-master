@@ -21,13 +21,15 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
 
 from utils.model_utils import restore
-def draw(input, target, result, step):
+def draw(input, target, result, select, step):
     #观察序列，查看关键点坐标，确定角度由哪些坐标计算
     fig = plt.figure(1)
+    fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
     fig.clear()
-    ax1 = fig.add_subplot(131, projection='3d')
-
-    ax1.scatter(input[:, 0], input[:, 1],input[:, 2])
+    ax1 = fig.add_subplot(221, projection='3d')
+    for select_i in range(32):
+        select_tmp_c = int(select_i/6)
+        ax1.scatter(input[select_i, 0], input[select_i, 1],input[select_i, 2], c=fig_color[select_tmp_c])
     ax1.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
     ax1.set_xlabel('x')
     ax1.set_ylabel('y')
@@ -36,7 +38,7 @@ def draw(input, target, result, step):
     ax1.set_ylim((-1, 1))
     ax1.set_zlim((-1, 1))
 
-    ax2 = fig.add_subplot(132, projection='3d')
+    ax2 = fig.add_subplot(222, projection='3d')
     ax2.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
     ax2.set_xlabel('x')
     ax2.set_ylabel('y')
@@ -44,7 +46,7 @@ def draw(input, target, result, step):
     ax2.set_xlim((-1, 1))
     ax2.set_ylim((-1, 1))
     ax2.set_zlim((-1, 1))
-    fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
+
     for f in range(6):
         if f < 5:
             for bone in range(5):
@@ -62,7 +64,23 @@ def draw(input, target, result, step):
         # ax.scatter(uvd_pt[f * 2, 0], uvd_pt[f * 2, 1], uvd_pt[f * 2, 2], s=60, c=fig_color[f])
         ax2.scatter(target[f*6:(f+1)*6, 0], target[f*6:(f+1)*6, 1], target[f*6:(f+1)*6, 2], s=30, c=fig_color[f])
 
-    ax3 = fig.add_subplot(133, projection='3d')
+    ax3 = fig.add_subplot(223, projection='3d')
+    select = select.astype(np.int)
+    for select_i in range(select.size):
+        select_tmp = select[select_i]
+        select_tmp_c = int(select_tmp/6)
+        ax3.scatter(input[select[select_i], 0], input[select[select_i], 1],input[select[select_i], 2], c=fig_color[select_tmp_c])
+
+    ax3.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
+    ax3.set_xlabel('x')
+    ax3.set_ylabel('y')
+    ax3.set_zlabel('z')
+    ax3.set_xlim((-1, 1))
+    ax3.set_ylim((-1, 1))
+    ax3.set_zlim((-1, 1))
+    ax3.set_title(str(select))
+
+    ax3 = fig.add_subplot(224, projection='3d')
     ax2 = ax3
     target = result
     ax2.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
@@ -101,7 +119,8 @@ def visualize(fetch_results):
     for step in range(graph_num):
         draw(fetch_results['initial_node_features'][step*32:(step+1)*32,:],
                   fetch_results['target_values'][step*32:(step+1)*32,:],
-                  fetch_results['final_output_node_representations'][step*32:(step+1)*32,:], step)
+                  fetch_results['final_output_node_representations'][step*32:(step+1)*32,:],
+                  fetch_results['initial_node_features_select'], step)
 
 
 def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, quiet: bool = False):

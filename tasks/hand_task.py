@@ -148,6 +148,60 @@ class Hand_Task(Sparse_Graph_Task):
 
         return type_to_adj_list, type_to_num_incoming_edges
 
+    def make_task_input_model(self,
+                              placeholders: Dict[str, tf.Tensor],
+                              model_ops: Dict[str, tf.Tensor],
+                              ) -> None:
+        """
+        通过reshape保证对batchsize的扩展性
+        """
+        placeholders['initial_node_features'] = \
+            tf.placeholder(dtype=tf.float32, shape=[None, self.initial_node_feature_size], name='initial_node_features')
+        #先用常量对初始特征进行mask。
+        placeholders['adjacency_lists'] = \
+            [tf.placeholder(dtype=tf.int32, shape=[None, 2], name='adjacency_e%s' % e)
+                for e in range(self.num_edge_types)]
+        placeholders['type_to_num_incoming_edges'] = \
+            tf.placeholder(dtype=tf.float32, shape=[self.num_edge_types, None], name='type_to_num_incoming_edges')
+
+        model_ops['initial_node_features'] = placeholders['initial_node_features']
+        model_ops['adjacency_lists'] = placeholders['adjacency_lists']
+        model_ops['type_to_num_incoming_edges'] = placeholders['type_to_num_incoming_edges']
+
+
+        point_num = 32
+        select_point_num = 7
+        with tf.variable_scope("select"):
+            select = tf.expand_dims(tf.Variable(tf.ones([select_point_num])), 0)
+            with tf.variable_scope("regression_gate"):
+                regression_gate = \
+                    MLP(select_point_num, 100, [], 1)
+            with tf.variable_scope("regression"):
+                regression_transform = \
+                    MLP(100, select_point_num, [], 1)
+
+            select = regression_gate(select)
+            select = regression_transform(select)
+            select = tf.minimum(tf.maximum(select, -1), 1)
+            select = (select + 1) / 2 * (point_num - 1)
+            select = tf.round(select)[0]
+            model_ops['initial_node_features_select'] = select
+        mask = tf.expand_dims(tf.range(point_num), 1)
+        mask = tf.cast(tf.tile(mask, [1, 3]), tf.float32)
+        ones_mask = tf.ones_like(mask)
+        zeros_mask = tf.zeros_like(mask)
+
+        for point in range(select_point_num):
+            if point == 0:
+                mask_log = tf.equal(mask - select[point], zeros_mask)
+            else:
+                mask_log = tf.logical_or(mask_log, tf.equal(mask - select[point], zeros_mask))
+
+        select = tf.where(mask_log, ones_mask, zeros_mask)
+        source_data = tf.reshape(model_ops['initial_node_features'], [-1, point_num, 3])
+        source_data = tf.multiply(source_data, select)
+        model_ops['initial_node_features'] = tf.reshape(source_data, [-1, 3])
+
     # -------------------- Model Construction --------------------
     def make_task_output_model(self,
                                placeholders: Dict[str, tf.Tensor],
@@ -234,7 +288,7 @@ class Hand_Task(Sparse_Graph_Task):
                 node_offset += num_nodes_in_graph
 
             batch_feed_dict = {
-                model_placeholders['initial_node_features']: np.array(batch_node_features),
+                model_placeholders['initial_node_features']: np.array(batch_target_task_values),
                 model_placeholders['type_to_num_incoming_edges']: np.concatenate(batch_type_to_num_incoming_edges, axis=1),
                 model_placeholders['graph_nodes_list']: np.concatenate(batch_graph_nodes_list),
                 model_placeholders['target_values']: np.array(batch_target_task_values),
