@@ -12,11 +12,12 @@ point_num = 32
 select_point_num = 5
 batch_num = np.random.randint(3,6)
 source_data = tf.convert_to_tensor(np.random.random((point_num*batch_num, 3)), dtype = tf.float32)  # 用于计算相乘和点乘（内积）的矩阵
-
-select = tf.expand_dims(tf.Variable(tf.ones([select_point_num])), 0)
+# [b*32,3]
+select = tf.reshape( source_data, [-1, point_num, 3])# [b,32,3]
+select = tf.reshape( select, [-1, point_num*3])# [b,32*3]
 with tf.variable_scope("regression_gate"):
     regression_gate = \
-        MLP(select_point_num, 100, [], 1)
+        MLP(point_num*3, 100, [], 1)
 with tf.variable_scope("regression"):
     regression_transform = \
         MLP(100, select_point_num, [], 1)
@@ -25,7 +26,8 @@ select = regression_gate(select)
 select = regression_transform(select)
 select = tf.minimum(tf.maximum(select, -1), 1)
 select = (select + 1)/2*(point_num-1)
-select = tf.round(select)[0]
+select = tf.reduce_mean(select, axis=0) # [b,5]
+select = tf.round(select)
 
 mask = tf.expand_dims(tf.range(point_num), 1)
 mask = tf.cast(tf.tile(mask, [1, 3]), tf.float32)

@@ -172,10 +172,11 @@ class Hand_Task(Sparse_Graph_Task):
         point_num = 32
         select_point_num = 7
         with tf.variable_scope("select"):
-            select = tf.expand_dims(tf.Variable(tf.ones([select_point_num])), 0)
+            select = tf.reshape( placeholders['initial_node_features'], [-1, point_num, 3])
+            select = tf.reshape( select, [-1, point_num*3])
             with tf.variable_scope("regression_gate"):
                 regression_gate = \
-                    MLP(select_point_num, 100, [], 1)
+                    MLP(point_num * 3, 100, [], 1)
             with tf.variable_scope("regression"):
                 regression_transform = \
                     MLP(100, select_point_num, [], 1)
@@ -184,7 +185,9 @@ class Hand_Task(Sparse_Graph_Task):
             select = regression_transform(select)
             select = tf.minimum(tf.maximum(select, -1), 1)
             select = (select + 1) / 2 * (point_num - 1)
-            select = tf.round(select)[0]
+            select = tf.reduce_mean(select, axis=0)  # [b,5]
+            select = tf.round(select)
+            select = tf.constant([0,6,12,18,24,30,31],dtype=tf.float32)
             model_ops['initial_node_features_select'] = select
         mask = tf.expand_dims(tf.range(point_num), 1)
         mask = tf.cast(tf.tile(mask, [1, 3]), tf.float32)
