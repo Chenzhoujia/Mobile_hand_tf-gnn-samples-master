@@ -33,10 +33,13 @@ class GGNN_Model(Sparse_Graph_Model):
                          node_representations: tf.Tensor,
                          adjacency_lists: List[tf.Tensor],
                          type_to_num_incoming_edges: tf.Tensor,
-                         num_timesteps: int) -> tf.Tensor:
+                         num_timesteps: int,
+                         learnable_Adj) -> tf.Tensor:
+
         return sparse_ggnn_layer(
             node_embeddings=node_representations,
             adjacency_lists=adjacency_lists,
+            learnable_Adj=learnable_Adj,
             state_dim=self.params['hidden_size'],
             num_timesteps=num_timesteps,
             gated_unit_type=self.params['graph_rnn_cell'],

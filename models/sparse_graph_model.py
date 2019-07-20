@@ -160,6 +160,7 @@ class Sparse_Graph_Model(ABC):
 
     def __build_graph_propagation_model(self) -> tf.Tensor:
         h_dim = self.params['hidden_size']
+        self.__ops['learnable_Adj'] = tf.Variable(np.ones([32,32])/32, name='learnable_adj', dtype=tf.float32)
         activation_fn = get_activation(self.params['graph_model_activation_function'])
         if self.task.initial_node_feature_size != self.params['hidden_size']:
             self.__ops['projected_node_features'] = \
@@ -180,12 +181,13 @@ class Sparse_Graph_Model(ABC):
                         cur_node_representations += last_residual_representations
                         cur_node_representations /= 2
                     last_residual_representations = t
-                cur_node_representations = \
+                cur_node_representations, self.__ops['num_nodes'] = \
                     self._apply_gnn_layer(
                         cur_node_representations,
                         self.__ops['adjacency_lists'],
                         self.__ops['type_to_num_incoming_edges'],
-                        self.params['graph_num_timesteps_per_layer'])
+                        self.params['graph_num_timesteps_per_layer'],
+                        self.__ops['learnable_Adj'])
                 if self.params['graph_inter_layer_norm']:
                     cur_node_representations = tf.contrib.layers.layer_norm(cur_node_representations)
                 if layer_idx % self.params['graph_dense_between_every_num_gnn_layers'] == 0:
@@ -203,7 +205,8 @@ class Sparse_Graph_Model(ABC):
                          node_representations: tf.Tensor,
                          adjacency_lists: List[tf.Tensor],
                          type_to_num_incoming_edges: tf.Tensor,
-                         num_timesteps: int) -> tf.Tensor:
+                         num_timesteps: int,
+                         learnable_Adj: tf.Tensor) -> tf.Tensor:
         """
         Run a GNN layer on a graph.
 
@@ -281,6 +284,8 @@ class Sparse_Graph_Model(ABC):
             fetch_dict['target_values'] = self.__placeholders['target_values']
             fetch_dict['final_output_node_representations'] = self.__ops['final_output_node_representations']
             fetch_dict['initial_node_features_select'] = self.__ops['initial_node_features_select']
+            fetch_dict['num_nodes'] = self.__ops['num_nodes']
+            fetch_dict['learnable_Adj'] = self.__ops['learnable_Adj']
 
             fetch_results = self.sess.run(fetch_dict, feed_dict=batch_data.feed_dict)
             epoch_loss += fetch_results['task_metrics']['loss'] * batch_data.num_graphs
@@ -334,7 +339,9 @@ class Sparse_Graph_Model(ABC):
                               % (train_loss,
                                  self.task.pretty_print_epoch_task_metrics(train_task_metrics, train_num_graphs),
                                  train_graphs_p_s, train_nodes_p_s, train_edges_p_s))
-                self.log_line(" select point: "+str(np.sort(fetch_results['initial_node_features_select'])))
+                # self.log_line(" select point: "+str(np.sort(fetch_results['initial_node_features_select'])))
+                # self.log_line(" num: "+str(fetch_results['num_nodes']))
+                self.log_line(" num: "+str(fetch_results['learnable_Adj']))
 
                 valid_loss, valid_task_metrics, valid_num_graphs, valid_graphs_p_s, valid_nodes_p_s, valid_edges_p_s, _ = \
                     self.__run_epoch("epoch %i (validation)" % epoch,
