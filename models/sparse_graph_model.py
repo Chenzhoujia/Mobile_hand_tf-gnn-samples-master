@@ -324,6 +324,7 @@ class Sparse_Graph_Model(ABC):
                 train_writer, valid_writer = None, None
 
             (best_valid_metric, best_val_metric_epoch, best_val_metric_descr) = (float("+inf"), 0, "")
+            learnable_Adj_List = []
             for epoch in range(1, self.params['max_epochs'] + 1):
                 self.log_line("== Epoch %i" % epoch)
 
@@ -341,7 +342,10 @@ class Sparse_Graph_Model(ABC):
                                  train_graphs_p_s, train_nodes_p_s, train_edges_p_s))
                 # self.log_line(" select point: "+str(np.sort(fetch_results['initial_node_features_select'])))
                 # self.log_line(" num: "+str(fetch_results['num_nodes']))
-                self.log_line(" num: "+str(fetch_results['learnable_Adj']))
+                learnable_Adj_List.append(fetch_results['learnable_Adj'])
+                learnable_Adj_array = np.array(learnable_Adj_List)
+                np.save("./learnable_Adj_array.npy",learnable_Adj_array)
+                #self.log_line(" num: "+str(fetch_results['learnable_Adj']))
 
                 valid_loss, valid_task_metrics, valid_num_graphs, valid_graphs_p_s, valid_nodes_p_s, valid_edges_p_s, _ = \
                     self.__run_epoch("epoch %i (validation)" % epoch,
