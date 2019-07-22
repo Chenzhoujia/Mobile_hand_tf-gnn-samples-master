@@ -286,6 +286,7 @@ class Sparse_Graph_Model(ABC):
             fetch_dict['initial_node_features_select'] = self.__ops['initial_node_features_select']
             fetch_dict['num_nodes'] = self.__ops['num_nodes']
             fetch_dict['learnable_Adj'] = self.__ops['learnable_Adj']
+            fetch_dict['pre_loss'] = self.__ops['task_metrics']['pre_loss']
 
             fetch_results = self.sess.run(fetch_dict, feed_dict=batch_data.feed_dict)
             epoch_loss += fetch_results['task_metrics']['loss'] * batch_data.num_graphs
@@ -325,6 +326,7 @@ class Sparse_Graph_Model(ABC):
 
             (best_valid_metric, best_val_metric_epoch, best_val_metric_descr) = (float("+inf"), 0, "")
             learnable_Adj_List = []
+            preloss_List = []
             for epoch in range(1, self.params['max_epochs'] + 1):
                 self.log_line("== Epoch %i" % epoch)
 
@@ -345,6 +347,11 @@ class Sparse_Graph_Model(ABC):
                 learnable_Adj_List.append(fetch_results['learnable_Adj'])
                 learnable_Adj_array = np.array(learnable_Adj_List)
                 np.save("./learnable_Adj_array.npy",learnable_Adj_array)
+
+                preloss_List.append(fetch_results['pre_loss'])
+                preloss_List_array = np.array(preloss_List)
+                np.save("./preloss_List.npy",preloss_List_array)
+
                 #self.log_line(" num: "+str(fetch_results['learnable_Adj']))
 
                 valid_loss, valid_task_metrics, valid_num_graphs, valid_graphs_p_s, valid_nodes_p_s, valid_edges_p_s, _ = \

@@ -15,6 +15,7 @@ Options:
 from typing import Optional
 import numpy as np
 from docopt import docopt
+import os
 from dpu_utils.utils import run_and_debug, RichPath
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -110,7 +111,10 @@ def draw(input, target, result, select, step):
 
     # plt.show()
     # plt.pause(0.01)
-    plt.savefig("/tmp/image/" + str(step).zfill(5) + ".jpg")
+    directory = "/tmp/image/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    plt.savefig(directory + str(step).zfill(5) + ".jpg")
 
 def visualize(fetch_results):
     shape = np.shape(fetch_results['initial_node_features'])

@@ -219,6 +219,7 @@ class Hand_Task(Sparse_Graph_Task):
 
         task_metrics = {}
         losses = []
+        loss_pre = []
         final_node_feature_size = model_ops['final_node_representations'].shape.as_list()[-1]
         for (internal_id, task_id) in enumerate(self.params['task_ids']):
             with tf.variable_scope("out_layer_task%i" % task_id):
@@ -241,11 +242,18 @@ class Hand_Task(Sparse_Graph_Task):
 
                 per_graph_errors = per_graph_outputs - placeholders['target_values']
                 task_metrics['abs_err_task%i' % task_id] = tf.reduce_sum(tf.abs(per_graph_errors))
+                # 计算逐关节loss
+                per_graph_errors_per = tf.square(per_graph_errors)
+                per_graph_errors_per = tf.reduce_mean(per_graph_errors_per,axis=-1)
+                per_graph_errors_per = tf.reshape(per_graph_errors_per,[-1,32])
+                per_graph_errors_per = tf.reduce_mean(per_graph_errors_per, axis=0)
+                loss_pre.append(per_graph_errors_per)
                 tf.summary.scalar('mae_task%i' % task_id,
                                   task_metrics['abs_err_task%i' % task_id] / tf.cast(placeholders['num_graphs'], tf.float32))
                 losses.append(tf.reduce_mean(0.5 * tf.square(per_graph_errors)))
         model_ops['task_metrics'] = task_metrics
         model_ops['task_metrics']['loss'] = tf.reduce_sum(losses)
+        model_ops['task_metrics']['pre_loss'] = loss_pre[-1]
         model_ops['task_metrics']['total_loss'] = model_ops['task_metrics']['loss'] * tf.cast(placeholders['num_graphs'], tf.float32)
 
     # -------------------- Minibatching and training loop --------------------
