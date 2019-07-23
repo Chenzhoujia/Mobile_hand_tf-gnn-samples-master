@@ -15,6 +15,8 @@ def get_gated_unit(units: int, gated_unit: str, activation_function: str):
         return tf.keras.layers.SimpleRNNCell(units, activation=activation_fn)
     if gated_unit_name == 'gru':
         return tf.keras.layers.GRUCell(units, activation=activation_fn)
+    if gated_unit_name == 'nn_gru':
+        return tf.nn.rnn_cell.GRUCell(units, activation=activation_fn)
     if gated_unit_name == 'lstm':
         return tf.keras.layers.LSTMCell(units, activation=activation_fn)
     else:

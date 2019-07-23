@@ -168,42 +168,43 @@ class Hand_Task(Sparse_Graph_Task):
         model_ops['adjacency_lists'] = placeholders['adjacency_lists']
         model_ops['type_to_num_incoming_edges'] = placeholders['type_to_num_incoming_edges']
 
+        # 在图结构中做数据处理是不合理的
+        select = tf.constant([0,6,12,18,24,30,31],dtype=tf.float32)#与 json_gen中保持一致[0,6,12,18,24,30,31]
+        model_ops['initial_node_features_select'] = select
+        # point_num = 32
+        # select_point_num = 7
+        # with tf.variable_scope("select"):
+        #     # select = tf.reshape( placeholders['initial_node_features'], [-1, point_num, 3])
+        #     # select = tf.reshape( select, [-1, point_num*3])
+        #     # with tf.variable_scope("regression_gate"):
+        #     #     regression_gate = \
+        #     #         MLP(point_num * 3, 100, [], 1)
+        #     # with tf.variable_scope("regression"):
+        #     #     regression_transform = \
+        #     #         MLP(100, select_point_num, [], 1)
+        #     #
+        #     # select = regression_gate(select)
+        #     # select = regression_transform(select)
+        #     # select = tf.minimum(tf.maximum(select, -1), 1)
+        #     # select = (select + 1) / 2 * (point_num - 1)
+        #     # select = tf.reduce_mean(select, axis=0)  # [b,5]
+        #     # select = tf.round(select)
 
-        point_num = 32
-        select_point_num = 7
-        with tf.variable_scope("select"):
-            # select = tf.reshape( placeholders['initial_node_features'], [-1, point_num, 3])
-            # select = tf.reshape( select, [-1, point_num*3])
-            # with tf.variable_scope("regression_gate"):
-            #     regression_gate = \
-            #         MLP(point_num * 3, 100, [], 1)
-            # with tf.variable_scope("regression"):
-            #     regression_transform = \
-            #         MLP(100, select_point_num, [], 1)
-            #
-            # select = regression_gate(select)
-            # select = regression_transform(select)
-            # select = tf.minimum(tf.maximum(select, -1), 1)
-            # select = (select + 1) / 2 * (point_num - 1)
-            # select = tf.reduce_mean(select, axis=0)  # [b,5]
-            # select = tf.round(select)
-            select = tf.constant([0,6,12,18,24,30,31],dtype=tf.float32)
-            model_ops['initial_node_features_select'] = select
-        mask = tf.expand_dims(tf.range(point_num), 1)
-        mask = tf.cast(tf.tile(mask, [1, 3]), tf.float32)
-        ones_mask = tf.ones_like(mask)
-        zeros_mask = tf.zeros_like(mask)
-
-        for point in range(select_point_num):
-            if point == 0:
-                mask_log = tf.equal(mask - select[point], zeros_mask)
-            else:
-                mask_log = tf.logical_or(mask_log, tf.equal(mask - select[point], zeros_mask))
-
-        select = tf.where(mask_log, ones_mask, zeros_mask)
-        source_data = tf.reshape(model_ops['initial_node_features'], [-1, point_num, 3])
-        source_data = tf.multiply(source_data, select)
-        model_ops['initial_node_features'] = tf.reshape(source_data, [-1, 3])
+        # mask = tf.expand_dims(tf.range(point_num), 1)
+        # mask = tf.cast(tf.tile(mask, [1, 3]), tf.float32)
+        # ones_mask = tf.ones_like(mask)
+        # zeros_mask = tf.zeros_like(mask)
+        #
+        # for point in range(select_point_num):
+        #     if point == 0:
+        #         mask_log = tf.equal(mask - select[point], zeros_mask)
+        #     else:
+        #         mask_log = tf.logical_or(mask_log, tf.equal(mask - select[point], zeros_mask))
+        #
+        # select = tf.where(mask_log, ones_mask, zeros_mask)
+        # source_data = tf.reshape(model_ops['initial_node_features'], [-1, point_num, 3])
+        # source_data = tf.multiply(source_data, select)
+        # model_ops['initial_node_features'] = tf.reshape(source_data, [-1, 3])
 
     # -------------------- Model Construction --------------------
     def make_task_output_model(self,
@@ -214,8 +215,8 @@ class Hand_Task(Sparse_Graph_Task):
             tf.placeholder(dtype=tf.int32, shape=[None], name='graph_nodes_list')
         placeholders['target_values'] = \
             tf.placeholder(dtype=tf.float32, shape=[None, 3], name='target_values')
-        placeholders['out_layer_dropout_keep_prob'] = \
-            tf.placeholder(dtype=tf.float32, shape=[], name='out_layer_dropout_keep_prob')
+        # placeholders['out_layer_dropout_keep_prob'] = \
+        #     tf.placeholder(dtype=tf.float32, shape=[], name='out_layer_dropout_keep_prob')
 
         task_metrics = {}
         losses = []
@@ -225,12 +226,12 @@ class Hand_Task(Sparse_Graph_Task):
             with tf.variable_scope("out_layer_task%i" % task_id):
                 with tf.variable_scope("regression_gate"):
                     regression_gate = \
-                        MLP(final_node_feature_size, 3, [],
-                            placeholders['out_layer_dropout_keep_prob'])
+                        MLP(final_node_feature_size, 3, [], 1.0)
+                            # placeholders['out_layer_dropout_keep_prob'])
                 with tf.variable_scope("regression"):
                     regression_transform = \
-                        MLP(final_node_feature_size, 3, [],
-                            placeholders['out_layer_dropout_keep_prob'])
+                        MLP(final_node_feature_size, 3, [], 1.0)
+                            # placeholders['out_layer_dropout_keep_prob'])
 
                 per_node_outputs = regression_transform(model_ops['final_node_representations'])
                 gate_input = model_ops['final_node_representations']
@@ -239,6 +240,7 @@ class Hand_Task(Sparse_Graph_Task):
                 # 计算loss
                 per_graph_outputs = per_node_gated_outputs
                 model_ops['final_output_node_representations'] = per_graph_outputs
+                per_graph_outputs = tf.add(per_graph_outputs, 0, name='final_output_node_representations')
 
                 per_graph_errors = per_graph_outputs - placeholders['target_values']
                 task_metrics['abs_err_task%i' % task_id] = tf.reduce_sum(tf.abs(per_graph_errors))
@@ -299,11 +301,11 @@ class Hand_Task(Sparse_Graph_Task):
                 node_offset += num_nodes_in_graph
 
             batch_feed_dict = {
-                model_placeholders['initial_node_features']: np.array(batch_target_task_values),
+                model_placeholders['initial_node_features']: np.array(batch_node_features),
                 model_placeholders['type_to_num_incoming_edges']: np.concatenate(batch_type_to_num_incoming_edges, axis=1),
                 model_placeholders['graph_nodes_list']: np.concatenate(batch_graph_nodes_list),
                 model_placeholders['target_values']: np.array(batch_target_task_values),
-                model_placeholders['out_layer_dropout_keep_prob']: out_layer_dropout_keep_prob,
+                # model_placeholders['out_layer_dropout_keep_prob']: out_layer_dropout_keep_prob,
             }
 
             # Merge adjacency lists:

@@ -1,28 +1,36 @@
-#!/usr/bin/env python
-"""
-Usage:
-   test.py [options] STORED_MODEL_PATH [DATA_PATH]
-
-STORED_MODEL is the path of a model snapshot created by train.py.
-DATA_PATH is the location of the data to test on.
-
-Options:
-    -h --help                       Show this screen.
-    --result_dir DIR                Directory to store logfiles and trained models. [default: trained_models]
-    --quiet                         Show less output.
-    --debug                         Turn on debugger.
-"""
-from typing import Optional
+import tensorflow as tf
+import argparse
+import cv2
+from tqdm import tqdm
+import scipy.misc
 import numpy as np
-from docopt import docopt
-import os
-from dpu_utils.utils import run_and_debug, RichPath
+import matplotlib.pyplot as plt
+import pickle, os
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
+from typing import Any, Dict, Tuple, List, Iterable
 
-from utils.model_utils import restore
+def load_graph(frozen_graph_filename):
+    # 加载protobug文件，并反序列化成graph_def
+    with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(f.read())
+
+    with tf.Graph().as_default() as graph_:
+        # 将读出来的graph_def导入到当前的Graph中
+        # 为了避免多个图之间的明明冲突，增加一个前缀
+        tf.import_graph_def(graph_def)
+
+    return graph_
+
+def load_data(data_file = './/data/hand_gen/hand_test.pkl'):
+    print(" Loading hand data from %s." % (data_file,))
+    data_file = "%s" % (data_file,)
+    with open(data_file, 'rb') as f:
+        data = pickle.load(f)
+    return data
 def draw(input, target, result, select, step):
     #观察序列，查看关键点坐标，确定角度由哪些坐标计算
     fig = plt.figure(1)
@@ -115,65 +123,37 @@ def draw(input, target, result, select, step):
     directory = "/tmp/image/"
     if not os.path.exists(directory):
         os.makedirs(directory)
-    plt.savefig(directory + str(step).zfill(5) + ".jpg")
+    plt.savefig(directory + str(step).zfill(5) + "_.jpg")
 
-def visualize(fetch_results):
-    shape = np.shape(fetch_results['initial_node_features'])
-    graph_num = int(shape[0]/32)
-    print("绘制"+str(graph_num)+"张图片")
-    for step in range(graph_num):
-        draw(fetch_results['initial_node_features'][step*32:(step+1)*32,:],
-                  fetch_results['target_values'][step*32:(step+1)*32,:],
-                  fetch_results['final_output_node_representations'][step*32:(step+1)*32,:],
-                  fetch_results['initial_node_features_select'], step)
+if __name__ == '__main__':
 
+    # 允许用户传入文件名作为参数
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--frozen_model_filename", default="results/frozen_model.pb", type=str,
+                        help="Frozen model file to import")
+    args = parser.parse_args()
 
-def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, quiet: bool = False):
-    model = restore(model_path, result_dir)
-    test_data_path = test_data_path or RichPath.create(model.task.default_data_path())
-    create_pb = True
-    if create_pb:
-        # model.sess = tf.Session(graph=self.graph, config=config)
-        # with model.graph.as_default():
+    # 从pb文件中读取图结构
+    graph = load_graph(args.frozen_model_filename)
 
-        input_graph_def = model.graph.as_graph_def()
-        # variable_names = [v.name for v in input_graph_def.node]
-        # print(variable_names)
-        # for op in model.graph.get_operations():
-        #     print(str(op.name))
-        output_graph_def = tf.graph_util.convert_variables_to_constants(
-            model.sess,  # The session
-            input_graph_def,  # input_graph_def is useful for retrieving the nodes
-            'out_layer_task0/final_output_node_representations'.split(",")
-        )
-        with tf.gfile.FastGFile(model_path[:-6]+"pb", "wb") as f:
-            f.write(output_graph_def.SerializeToString())
-        """
-        source activate TFlite
-        tflite_convert \
-        --graph_def_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/trained_models/HAND_GEN_GGNN_2019-07-23-16-27-58_8104_best_model.pb \
-        --output_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/trained_models/HAND_GEN_GGNN_2019-07-23-16-27-58_8104_best_model.lite \
-        --output_format=TFLITE \
-        --input_shapes=32,3 \
-        --input_arrays=initial_node_features \
-        --output_arrays=out_layer_task0/final_output_node_representations \
-        --inference_type=FLOAT
-        
-        """
-    model.test(test_data_path)
-    visualize(model.fetch_results)
+    # 列举所有的操作
+    for op in graph.get_operations():
+        print(op.name)
+        # --input_arrays=initial_node_features \
+        # --output_arrays=out_layer_task0/final_output_node_representations \
+    x = graph.get_tensor_by_name('import/initial_node_features:0')
+    y = graph.get_tensor_by_name('import/out_layer_task0/final_output_node_representations:0')
 
+    # 读取数据
+    data = load_data()
 
-def run(args):
-    azure_info_path = args.get('--azure-info', None)
-    model_path = args['STORED_MODEL_PATH']
-    test_data_path = args.get('DATA_PATH')
-    if test_data_path is not None:
-        test_data_path = RichPath.create(test_data_path, azure_info_path)
-    result_dir = args.get('--result_dir', 'trained_models')
-    test(model_path, test_data_path, result_dir, quiet=args.get('--quiet'))
-
-
-if __name__ == "__main__":
-    args = docopt(__doc__)
-    run_and_debug(lambda: run(args), enable_debugging=args['--debug'])
+    # We launch a Session
+    with tf.Session(graph=graph) as sess:
+        for step in tqdm(range(len(data))):
+            hand_data = np.loadtxt("./trained_models/test_image.txt", delimiter=',')
+            hand_data = np.reshape(hand_data,(-1,3))
+            #preheat_v = sess.run(y, feed_dict={x: data[step]['node_features']})
+            preheat_v = sess.run(y, feed_dict={x: hand_data})
+            #data_save = np.reshape(data[step]['node_features'],(1,-1))
+            #np.savetxt("./trained_models/test_image.txt", data_save, fmt='%f', delimiter=',')
+            draw(data[step]['node_features'], preheat_v, preheat_v, np.array([0,6,12,18,24,30,31]), step)

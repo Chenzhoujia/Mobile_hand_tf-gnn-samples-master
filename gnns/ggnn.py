@@ -52,25 +52,28 @@ def sparse_ggnn_layer(node_embeddings: tf.Tensor,
         state_dim = tf.shape(node_embeddings, out_type=tf.int32)[1]
 
     # === Prepare things we need across all timesteps:
-    message_aggregation_fn = get_aggregation_function(message_aggregation_function)
-    gated_cell = get_gated_unit(state_dim, gated_unit_type, activation_function)
-    edge_type_to_message_transformation_layers = []  # Layers to compute the message from a source state
-    edge_type_to_message_targets = []  # List of tensors of message targets
-    for edge_type_idx, adjacency_list_for_edge_type in enumerate(adjacency_lists):
-        edge_type_to_message_transformation_layers.append(
-            tf.keras.layers.Dense(units=state_dim,
-                                  use_bias=False,
-                                  activation=None,
-                                  name="Edge_%i_Weight" % edge_type_idx))
-        edge_type_to_message_targets.append(adjacency_list_for_edge_type[:, 1])
+    dense_graph = False
+    gated_cell = get_gated_unit(state_dim, "nn_gru", activation_function)
+    if dense_graph:
+        message_aggregation_fn = get_aggregation_function(message_aggregation_function)
 
-    # Let M be the number of messages (sum of all E):
-    message_targets = tf.concat(edge_type_to_message_targets, axis=0)  # Shape [M]
+        edge_type_to_message_transformation_layers = []  # Layers to compute the message from a source state
+        edge_type_to_message_targets = []  # List of tensors of message targets
+        for edge_type_idx, adjacency_list_for_edge_type in enumerate(adjacency_lists):
+            edge_type_to_message_transformation_layers.append(
+                tf.keras.layers.Dense(units=state_dim,
+                                      use_bias=False,
+                                      activation=None,
+                                      name="Edge_%i_Weight" % edge_type_idx))
+            edge_type_to_message_targets.append(adjacency_list_for_edge_type[:, 1])
+
+        # Let M be the number of messages (sum of all E):
+        message_targets = tf.concat(edge_type_to_message_targets, axis=0)  # Shape [M]
 
     cur_node_states = node_embeddings
     for _ in range(num_timesteps):
 
-        if False:
+        if dense_graph:
             messages = []  # list of tensors of messages of shape [E, D]
             message_source_states = []  # list of tensors of edge source states of shape [E, D]
             # Collect incoming messages per edge type
@@ -98,7 +101,8 @@ def sparse_ggnn_layer(node_embeddings: tf.Tensor,
             aggregated_messages = tf.transpose(target)  # [B*G, D]
 
         # pass updated vertex features into RNN cell
-        new_node_states = gated_cell(aggregated_messages, [cur_node_states])[0]  # Shape [V, D]
+        new_node_states,_ = gated_cell(aggregated_messages, cur_node_states)  # Shape [V, D]
         cur_node_states = new_node_states
+        #cur_node_states = aggregated_messages
 
     return cur_node_states, [num_nodes]
