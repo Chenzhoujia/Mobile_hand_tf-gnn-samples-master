@@ -156,4 +156,4 @@ if __name__ == '__main__':
             preheat_v = sess.run(y, feed_dict={x: hand_data})
             #data_save = np.reshape(data[step]['node_features'],(1,-1))
             #np.savetxt("./trained_models/test_image.txt", data_save, fmt='%f', delimiter=',')
-            draw(data[step]['node_features'], preheat_v, preheat_v, np.array([0,6,12,18,24,30,31]), step)
+            draw(data[step]['node_features'], preheat_v, preheat_v, np.array([0,6,12,18,24]), step)

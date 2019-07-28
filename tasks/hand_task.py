@@ -79,8 +79,8 @@ class Hand_Task(Sparse_Graph_Task):
         self._loaded_data[DataFold.VALIDATION] = self.__load_data(path.join("hand_test.pkl"))
 
     def load_eval_data_from_path(self, path: RichPath) -> Iterable[Any]:
-        if path.path == self.default_data_path():
-            path = path.join("hand_test.pkl")
+        #if path.path == self.default_data_path():
+        path = path.join("hand_test.pkl")
         return self.__load_data(path)
 
     def __load_data(self, data_file: RichPath) -> List[GraphSample]:
@@ -169,7 +169,7 @@ class Hand_Task(Sparse_Graph_Task):
         model_ops['type_to_num_incoming_edges'] = placeholders['type_to_num_incoming_edges']
 
         # 在图结构中做数据处理是不合理的
-        select = tf.constant([0,6,12,18,24,30,31],dtype=tf.float32)#与 json_gen中保持一致[0,6,12,18,24,30,31]
+        select = tf.constant([0,6,12,18,24],dtype=tf.float32)#与 json_gen中保持一致[0,6,12,18,24]
         model_ops['initial_node_features_select'] = select
         # point_num = 32
         # select_point_num = 7

@@ -23,6 +23,12 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
 
 from utils.model_utils import restore
+
+test_model = 'pool/'
+level_model = 'point/'
+detal_name = '5tip_xy/'
+save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
+
 def draw(input, target, result, select, step):
     #观察序列，查看关键点坐标，确定角度由哪些坐标计算
     fig = plt.figure(1)
@@ -112,7 +118,7 @@ def draw(input, target, result, select, step):
 
     # plt.show()
     # plt.pause(0.01)
-    directory = "/tmp/image/"
+    directory = save_dataset_dir+"trained_model/test/image/"
     if not os.path.exists(directory):
         os.makedirs(directory)
     plt.savefig(directory + str(step).zfill(5) + ".jpg")
@@ -151,8 +157,8 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
         """
         source activate TFlite
         tflite_convert \
-        --graph_def_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/trained_models/HAND_GEN_GGNN_2019-07-23-16-27-58_8104_best_model.pb \
-        --output_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/trained_models/HAND_GEN_GGNN_2019-07-23-16-27-58_8104_best_model.lite \
+        --graph_def_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/data/hand_gen/pool/point/5tip_xy/trained_model/HAND_GEN_GGNN_2019-07-27-22-02-20_7901_best_model.pb \
+        --output_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/data/hand_gen/pool/point/5tip_xy/HAND_GEN_GGNN_2019-07-27-22-02-20_7901_best_model.lite \
         --output_format=TFLITE \
         --input_shapes=32,3 \
         --input_arrays=initial_node_features \
@@ -165,11 +171,10 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    azure_info_path = args.get('--azure-info', None)
-    model_path = args['STORED_MODEL_PATH']
-    test_data_path = args.get('DATA_PATH')
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-07-27-22-02-20_7901_best_model.pickle"
+    test_data_path = save_dataset_dir
     if test_data_path is not None:
-        test_data_path = RichPath.create(test_data_path, azure_info_path)
+        test_data_path = RichPath.create(test_data_path)
     result_dir = args.get('--result_dir', 'trained_models')
     test(model_path, test_data_path, result_dir, quiet=args.get('--quiet'))
 

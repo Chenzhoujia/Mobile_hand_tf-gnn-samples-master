@@ -29,6 +29,10 @@ from dpu_utils.utils import run_and_debug, RichPath, git_tag_run
 from utils.model_utils import name_to_model_class, name_to_task_class, restore
 from test import test
 
+test_model = 'pool/'
+level_model = 'point/'
+detal_name = '5tip_xy/'
+save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
 def run(args):
     azure_info_path = args.get('--azure-info', None)
@@ -66,10 +70,10 @@ def run(args):
             task_params[param_name] = RichPath.create(param_value, azure_info_path)
 
     # Now prepare to actually run by setting up directories, creating object instances and running:
-    result_dir = args.get('--result_dir', 'trained_models')
+    result_dir = save_dataset_dir+'trained_model'
     os.makedirs(result_dir, exist_ok=True)
     task = task_cls(task_params)
-    data_path = args.get('--data-path') or task.default_data_path()
+    data_path = save_dataset_dir
     data_path = RichPath.create(data_path, azure_info_path)
     task.load_data(data_path)
     model = model_cls(model_params, task, run_id, result_dir)
@@ -85,10 +89,10 @@ def run(args):
     model.log_line(" Using the following model params: %s" % json.dumps(model_params))
 
     model.initialize_model()
-    with open('./trained_models/HAND_GEN_GGNN_2019-07-23-00-34-03_4178_best_model.pickle', 'rb') as in_file:
-        data_to_load = pickle.load(in_file)
-    model.load_weights(data_to_load['weights'])
-    model.train(quiet=args.get('--quiet'), tf_summary_path=args.get('--tensorboard'))
+    # with open('./trained_models/HAND_GEN_GGNN_2019-07-25-21-12-04_13364_best_model.pickle', 'rb') as in_file:
+    #     data_to_load = pickle.load(in_file)
+    # model.load_weights(data_to_load['weights'])
+    model.train(quiet=args.get('--quiet'), tf_summary_path=save_dataset_dir+'tensorboard')
 
     if args.get('--run-test'):
         test(model.best_model_file, data_path, result_dir, quiet=args.get('--quiet'))

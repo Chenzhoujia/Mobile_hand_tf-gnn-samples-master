@@ -346,11 +346,11 @@ class Sparse_Graph_Model(ABC):
                 # self.log_line(" num: "+str(fetch_results['num_nodes']))
                 learnable_Adj_List.append(fetch_results['learnable_Adj'])
                 learnable_Adj_array = np.array(learnable_Adj_List)
-                np.save("./learnable_Adj_array.npy",learnable_Adj_array)
+                np.save(self.result_dir+"/learnable_Adj_array.npy",learnable_Adj_array)
 
                 preloss_List.append(fetch_results['pre_loss'])
                 preloss_List_array = np.array(preloss_List)
-                np.save("./preloss_List.npy",preloss_List_array)
+                np.save(self.result_dir+"/preloss_List.npy",preloss_List_array)
 
                 #self.log_line(" num: "+str(fetch_results['learnable_Adj']))
 
