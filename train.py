@@ -29,9 +29,9 @@ from dpu_utils.utils import run_and_debug, RichPath, git_tag_run
 from utils.model_utils import name_to_model_class, name_to_task_class, restore
 from test import test
 
-test_model = 'pool/'
+test_model = 'rich/'
 level_model = 'point/'
-detal_name = '5tip_xy/'
+detal_name = 'Random_disturbance/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
 def run(args):
@@ -89,7 +89,7 @@ def run(args):
     model.log_line(" Using the following model params: %s" % json.dumps(model_params))
 
     model.initialize_model()
-    # with open('./trained_models/HAND_GEN_GGNN_2019-07-25-21-12-04_13364_best_model.pickle', 'rb') as in_file:
+    # with open(save_dataset_dir+'trained_model/HAND_GEN_GGNN_2019-07-29-19-17-03_32483_best_model.pickle', 'rb') as in_file:
     #     data_to_load = pickle.load(in_file)
     # model.load_weights(data_to_load['weights'])
     model.train(quiet=args.get('--quiet'), tf_summary_path=save_dataset_dir+'tensorboard')

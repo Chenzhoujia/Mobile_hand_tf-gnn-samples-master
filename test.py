@@ -24,9 +24,9 @@ import matplotlib
 
 from utils.model_utils import restore
 
-test_model = 'pool/'
+test_model = 'rich/'
 level_model = 'point/'
-detal_name = '5tip_xy/'
+detal_name = 'Random_disturbance/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
 def draw(input, target, result, select, step):
@@ -34,87 +34,45 @@ def draw(input, target, result, select, step):
     fig = plt.figure(1)
     fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
     fig.clear()
-    ax1 = fig.add_subplot(221, projection='3d')
-    for select_i in range(32):
-        select_tmp_c = int(select_i/6)
-        ax1.scatter(input[select_i, 0], input[select_i, 1],input[select_i, 2], c=fig_color[select_tmp_c])
-    ax1.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('y')
-    ax1.set_zlabel('z')
-    ax1.set_xlim((-1, 1))
-    ax1.set_ylim((-1, 1))
-    ax1.set_zlim((-1, 1))
 
-    ax2 = fig.add_subplot(222, projection='3d')
-    ax2.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
-    ax2.set_xlabel('x')
-    ax2.set_ylabel('y')
-    ax2.set_zlabel('z')
-    ax2.set_xlim((-1, 1))
-    ax2.set_ylim((-1, 1))
-    ax2.set_zlim((-1, 1))
-
-    for f in range(6):
-        if f < 5:
-            for bone in range(5):
-                ax2.plot([target[f * 6+bone, 0], target[f * 6 +bone+ 1, 0]],
-                        [target[f * 6+bone, 1], target[f * 6 +bone+ 1, 1]],
-                        [target[f * 6+bone, 2], target[f * 6 +bone+ 1, 2]], color=fig_color[f], linewidth=2)
-            if f == 4:
-                ax2.plot([target[f * 6 + bone + 1, 0], target[30, 0]],
-                        [target[f * 6 + bone + 1, 1], target[30, 1]],
-                        [target[f * 6 + bone + 1, 2], target[30, 2]], color=fig_color[f], linewidth=2)
-            else:
-                ax2.plot([target[f * 6 + bone + 1, 0], target[31, 0]],
-                        [target[f * 6 + bone + 1, 1], target[31, 1]],
-                        [target[f * 6 + bone + 1, 2], target[31, 2]], color=fig_color[f], linewidth=2)
-        # ax.scatter(uvd_pt[f * 2, 0], uvd_pt[f * 2, 1], uvd_pt[f * 2, 2], s=60, c=fig_color[f])
-        ax2.scatter(target[f*6:(f+1)*6, 0], target[f*6:(f+1)*6, 1], target[f*6:(f+1)*6, 2], s=30, c=fig_color[f])
-
-    ax3 = fig.add_subplot(223, projection='3d')
-    select = select.astype(np.int)
-    for select_i in range(select.size):
-        select_tmp = select[select_i]
-        select_tmp_c = int(select_tmp/6)
-        ax3.scatter(input[select[select_i], 0], input[select[select_i], 1],input[select[select_i], 2], c=fig_color[select_tmp_c])
-
-    ax3.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
-    ax3.set_xlabel('x')
-    ax3.set_ylabel('y')
-    ax3.set_zlabel('z')
-    ax3.set_xlim((-1, 1))
-    ax3.set_ylim((-1, 1))
-    ax3.set_zlim((-1, 1))
-    ax3.set_title(str(select))
-
-    ax3 = fig.add_subplot(224, projection='3d')
-    ax2 = ax3
-    target = result
-    ax2.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
-    ax2.set_xlabel('x')
-    ax2.set_ylabel('y')
-    ax2.set_zlabel('z')
-    ax2.set_xlim((-1, 1))
-    ax2.set_ylim((-1, 1))
-    ax2.set_zlim((-1, 1))
-    fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
-    for f in range(6):
-        if f < 5:
-            for bone in range(5):
-                ax2.plot([target[f * 6+bone, 0], target[f * 6 +bone+ 1, 0]],
-                        [target[f * 6+bone, 1], target[f * 6 +bone+ 1, 1]],
-                        [target[f * 6+bone, 2], target[f * 6 +bone+ 1, 2]], color=fig_color[f], linewidth=2)
-            if f == 4:
-                ax2.plot([target[f * 6 + bone + 1, 0], target[30, 0]],
-                        [target[f * 6 + bone + 1, 1], target[30, 1]],
-                        [target[f * 6 + bone + 1, 2], target[30, 2]], color=fig_color[f], linewidth=2)
-            else:
-                ax2.plot([target[f * 6 + bone + 1, 0], target[31, 0]],
-                        [target[f * 6 + bone + 1, 1], target[31, 1]],
-                        [target[f * 6 + bone + 1, 2], target[31, 2]], color=fig_color[f], linewidth=2)
-        # ax.scatter(uvd_pt[f * 2, 0], uvd_pt[f * 2, 1], uvd_pt[f * 2, 2], s=60, c=fig_color[f])
-        ax2.scatter(target[f*6:(f+1)*6, 0], target[f*6:(f+1)*6, 1], target[f*6:(f+1)*6, 2], s=30, c=fig_color[f])
+    for ax_id in range(3):
+        if ax_id==0:
+            ax = fig.add_subplot(221, projection='3d')
+            draw = input
+            title = "input"
+        elif ax_id==1:
+            ax = fig.add_subplot(222, projection='3d')
+            draw = target
+            title = "target"
+        else:
+            ax = fig.add_subplot(223, projection='3d')
+            draw = result
+            title = "result"
+        ax.set_title(title)
+        ax.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.set_xlim((-1, 1))
+        ax.set_ylim((-1, 1))
+        ax.set_zlim((-1, 1))
+        fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
+        for f in range(6):
+            if f < 5:
+                for bone in range(5):
+                    ax.plot([draw[f * 6+bone, 0], draw[f * 6 +bone+ 1, 0]],
+                            [draw[f * 6+bone, 1], draw[f * 6 +bone+ 1, 1]],
+                            [draw[f * 6+bone, 2], draw[f * 6 +bone+ 1, 2]], color=fig_color[f], linewidth=2)
+                if f == 4:
+                    ax.plot([draw[f * 6 + bone + 1, 0], draw[30, 0]],
+                            [draw[f * 6 + bone + 1, 1], draw[30, 1]],
+                            [draw[f * 6 + bone + 1, 2], draw[30, 2]], color=fig_color[f], linewidth=2)
+                else:
+                    ax.plot([draw[f * 6 + bone + 1, 0], draw[31, 0]],
+                            [draw[f * 6 + bone + 1, 1], draw[31, 1]],
+                            [draw[f * 6 + bone + 1, 2], draw[31, 2]], color=fig_color[f], linewidth=2)
+            # ax.scatter(uvd_pt[f * 2, 0], uvd_pt[f * 2, 1], uvd_pt[f * 2, 2], s=60, c=fig_color[f])
+            ax.scatter(draw[f*6:(f+1)*6, 0], draw[f*6:(f+1)*6, 1], draw[f*6:(f+1)*6, 2], s=30, c=fig_color[f])
 
     # plt.show()
     # plt.pause(0.01)
@@ -158,7 +116,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
         source activate TFlite
         tflite_convert \
         --graph_def_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/data/hand_gen/pool/point/5tip_xy/trained_model/HAND_GEN_GGNN_2019-07-27-22-02-20_7901_best_model.pb \
-        --output_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/data/hand_gen/pool/point/5tip_xy/HAND_GEN_GGNN_2019-07-27-22-02-20_7901_best_model.lite \
+        --output_file=/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/data/hand_gen/pool/point/5tip_xy/trained_model/HAND_GEN_GGNN_2019-07-27-22-02-20_7901_best_model.lite \
         --output_format=TFLITE \
         --input_shapes=32,3 \
         --input_arrays=initial_node_features \
@@ -171,7 +129,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-07-27-22-02-20_7901_best_model.pickle"
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-07-31-01-34-07_29399_best_model.pickle"
     test_data_path = save_dataset_dir
     if test_data_path is not None:
         test_data_path = RichPath.create(test_data_path)
