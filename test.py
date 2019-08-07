@@ -26,7 +26,7 @@ from utils.model_utils import restore
 
 test_model = 'rich/'
 level_model = 'point/'
-detal_name = 'Random_disturbance/'
+detal_name = 'infer_z/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
 def draw(input, target, result, select, step):
@@ -129,7 +129,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-07-31-01-34-07_29399_best_model.pickle"
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-07-28-16-25-42_3568_best_model.pickle"
     test_data_path = save_dataset_dir
     if test_data_path is not None:
         test_data_path = RichPath.create(test_data_path)

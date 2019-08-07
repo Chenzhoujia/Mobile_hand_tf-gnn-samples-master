@@ -154,6 +154,7 @@ class Sparse_Graph_Model(ABC):
         for variable in tf.trainable_variables():
             num_pars += np.prod([dim.value for dim in variable.get_shape()])
         self.log_line("Model has %i parameters." % num_pars)
+        print(np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables()]))
 
         # Now add the optimizer bits:
         self.__make_train_step()
@@ -161,6 +162,22 @@ class Sparse_Graph_Model(ABC):
     def __build_graph_propagation_model(self) -> tf.Tensor:
         h_dim = self.params['hidden_size']
         self.__ops['learnable_Adj'] = tf.Variable(np.ones([32,32])/32, name='learnable_adj', dtype=tf.float32)
+        #self.__ops['learnable_Adj'] = tf.constant(np.ones([32,32])/2, name='learnable_adj', dtype=tf.float32)
+        # hc_array = np.zeros([32, 32])
+        # for hc_i in range(32):
+        #     hc_array[hc_i, hc_i] = 1
+        #     if hc_i != 31 and (hc_i + 1) % 6 != 0:
+        #         hc_array[hc_i, hc_i + 1] = 1
+        #         hc_array[hc_i + 1, hc_i] = 1
+        # for hc_i in range(5):
+        #     hc_array[hc_i * 6 + 5, 30] = 1
+        #     hc_array[30, hc_i * 6 + 5] = 1
+        # hc_array[29, 31] = 1
+        # hc_array[31, 29] = 1
+        # for hc_i2 in range(24):
+        #     hc_array[hc_i2, hc_i2 + 6] = 1
+        #     hc_array[hc_i2 + 6, hc_i2] = 1
+        # self.__ops['learnable_Adj'] = tf.constant(hc_array/2, name='learnable_adj', dtype=tf.float32)
         activation_fn = get_activation(self.params['graph_model_activation_function'])
         if self.task.initial_node_feature_size != self.params['hidden_size']:
             self.__ops['projected_node_features'] = \
