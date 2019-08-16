@@ -1,0 +1,9 @@
+embeddings {
+  tensor_name: "test_embedding:0"
+  metadata_path: "/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/python_test/tf-dev-summit-tensorboard-tutorial-master/mnist_meta.tsv"
+  sprite {
+    image_path: "/home/chen/Documents/Mobile_hand_tf-gnn-samples-master/python_test/tf-dev-summit-tensorboard-tutorial-master/mnist_sprite.jpg"
+    single_image_dim: 28
+    single_image_dim: 28
+  }
+}
