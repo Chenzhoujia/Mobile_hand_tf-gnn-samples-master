@@ -11,7 +11,7 @@ from dpu_utils.utils import ThreadedIterator, RichPath
 
 from tasks import Sparse_Graph_Task, DataFold
 from utils import get_activation
-
+node_num = int(14)
 
 class Sparse_Graph_Model(ABC):
     """
@@ -161,7 +161,7 @@ class Sparse_Graph_Model(ABC):
 
     def __build_graph_propagation_model(self) -> tf.Tensor:
         h_dim = self.params['hidden_size']
-        self.__ops['learnable_Adj'] = tf.Variable(np.ones([32,32])/32, name='learnable_adj', dtype=tf.float32)
+        self.__ops['learnable_Adj'] = tf.Variable(np.ones([node_num,node_num])/node_num, name='learnable_adj', dtype=tf.float32)
         #self.__ops['learnable_Adj'] = tf.constant(np.ones([32,32])/2, name='learnable_adj', dtype=tf.float32)
         # hc_array = np.zeros([32, 32])
         # for hc_i in range(32):
@@ -277,6 +277,8 @@ class Sparse_Graph_Model(ABC):
             data, data_fold, self.__placeholders, self.params['max_nodes_in_batch'])
         batch_iterator = ThreadedIterator(batch_iterator, max_queue_size=5)
         task_metric_results = []
+        test_inputs_loss = []
+        test_outputs_loss = []
         start_time = time.time()
         processed_graphs, processed_nodes, processed_edges = 0, 0, 0
         epoch_loss = 0.0
@@ -315,6 +317,14 @@ class Sparse_Graph_Model(ABC):
                       end='\r')
             if summary_writer:
                 summary_writer.add_summary(fetch_results['tf_summaries'], fetch_results['total_num_graphs'])
+            if data_fold == DataFold.TEST:
+                # 网络估计的是 output = inputs - labels 输入的-输出的 差
+                # 最终可视化的时候 展现的是 inputs - outputs
+                test_inputs_loss_tmp = fetch_results['initial_node_features'] - fetch_results['target_values']
+                test_outputs_loss_tmp = fetch_results['final_output_node_representations'] - fetch_results['target_values']
+
+                test_inputs_loss.append(np.mean(np.sum(test_inputs_loss_tmp**2,axis = 1)**0.5))
+                test_outputs_loss.append(np.mean(np.sum(test_outputs_loss_tmp**2,axis = 1)**0.5))
 
         assert processed_graphs > 0, "Can't run epoch over empty dataset."
 
@@ -323,6 +333,8 @@ class Sparse_Graph_Model(ABC):
         graphs_per_sec = processed_graphs / epoch_time
         nodes_per_sec = processed_nodes / epoch_time
         edges_per_sec = processed_edges / epoch_time
+
+        self.test_loss = np.mean(test_outputs_loss) / np.mean(test_inputs_loss)
         return per_graph_loss, task_metric_results, processed_graphs, graphs_per_sec, nodes_per_sec, edges_per_sec, \
                fetch_results
 
@@ -409,5 +421,5 @@ class Sparse_Graph_Model(ABC):
                 self.__run_epoch("Test", data, DataFold.TEST, quiet=quiet)
             if not quiet:
                 print("\r\x1b[K", end='')
-            self.log_line("Loss %.5f on %i graphs" % (test_loss, test_num_graphs))
+            self.log_line("Loss %.5f on %i graphs. average loss = %.5f" % (test_loss, test_num_graphs, self.test_loss))
             self.log_line("Metrics: %s" % self.task.pretty_print_epoch_task_metrics(test_task_metrics, test_num_graphs))

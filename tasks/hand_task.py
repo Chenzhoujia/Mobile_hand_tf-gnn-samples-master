@@ -9,6 +9,7 @@ from .sparse_graph_task import Sparse_Graph_Task, DataFold, MinibatchData
 from utils import MLP
 import pickle
 from tqdm import tqdm
+node_num = int(14)
 GraphSample = namedtuple('GraphSample', ['adjacency_lists',
                                          'type_to_node_to_num_incoming_edges',
                                          'node_features',
@@ -239,20 +240,45 @@ class Hand_Task(Sparse_Graph_Task):
 
                 # 计算loss
                 per_graph_outputs = per_node_gated_outputs
-                model_ops['final_output_node_representations'] = per_graph_outputs
+                model_ops['final_output_node_representations'] = placeholders['initial_node_features'] - per_graph_outputs
                 per_graph_outputs = tf.add(per_graph_outputs, 0, name='final_output_node_representations')
+                # 网络估计的是 output = inputs - labels 输入的-输出的 差
+                # 最终可视化的时候 展现的是 inputs - outputs
+                per_graph_errors = per_graph_outputs - \
+                                   (placeholders['initial_node_features'] - placeholders['target_values'])
 
-                per_graph_errors = per_graph_outputs - placeholders['target_values']
-                task_metrics['abs_err_task%i' % task_id] = tf.reduce_sum(tf.abs(per_graph_errors))
                 # 计算逐关节loss
                 per_graph_errors_per = tf.square(per_graph_errors)
                 per_graph_errors_per = tf.reduce_mean(per_graph_errors_per,axis=-1)
-                per_graph_errors_per = tf.reshape(per_graph_errors_per,[-1,32])
+                per_graph_errors_per = tf.reshape(per_graph_errors_per,[-1,node_num])
                 per_graph_errors_per = tf.reduce_mean(per_graph_errors_per, axis=0)
                 loss_pre.append(per_graph_errors_per)
+
+                per_graph_errors = tf.square(per_graph_errors)
+                per_graph_errors = tf.reduce_sum(per_graph_errors,axis=-1)
+                per_graph_errors = tf.sqrt(per_graph_errors)
+                per_graph_errors = tf.reduce_mean(per_graph_errors)
+                task_metrics['abs_err_task%i' % task_id] = per_graph_errors
+                losses.append(per_graph_errors)
+
                 tf.summary.scalar('mae_task%i' % task_id,
                                   task_metrics['abs_err_task%i' % task_id] / tf.cast(placeholders['num_graphs'], tf.float32))
-                losses.append(tf.reduce_mean(0.5 * tf.square(per_graph_errors)))
+                # # 计算loss
+                # per_graph_outputs = per_node_gated_outputs
+                # model_ops['final_output_node_representations'] = per_graph_outputs
+                # per_graph_outputs = tf.add(per_graph_outputs, 0, name='final_output_node_representations')
+                #
+                # per_graph_errors = per_graph_outputs - placeholders['target_values']
+                # task_metrics['abs_err_task%i' % task_id] = tf.reduce_sum(tf.abs(per_graph_errors))
+                # # 计算逐关节loss
+                # per_graph_errors_per = tf.square(per_graph_errors)
+                # per_graph_errors_per = tf.reduce_mean(per_graph_errors_per,axis=-1)
+                # per_graph_errors_per = tf.reshape(per_graph_errors_per,[-1,node_num])
+                # per_graph_errors_per = tf.reduce_mean(per_graph_errors_per, axis=0)
+                # loss_pre.append(per_graph_errors_per)
+                # tf.summary.scalar('mae_task%i' % task_id,
+                #                   task_metrics['abs_err_task%i' % task_id] / tf.cast(placeholders['num_graphs'], tf.float32))
+                # losses.append(tf.reduce_mean(0.5 * tf.square(per_graph_errors)))
         model_ops['task_metrics'] = task_metrics
         model_ops['task_metrics']['loss'] = tf.reduce_sum(losses)
         model_ops['task_metrics']['pre_loss'] = loss_pre[-1]

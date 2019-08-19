@@ -3,7 +3,7 @@ from typing import List, Optional
 import tensorflow as tf
 
 from utils import get_gated_unit, get_aggregation_function
-
+node_num = int(14)
 
 def sparse_ggnn_layer(node_embeddings: tf.Tensor,
                       adjacency_lists: List[tf.Tensor],
@@ -95,7 +95,7 @@ def sparse_ggnn_layer(node_embeddings: tf.Tensor,
             dense_message_aggregation = learnable_Adj
 
             source_data_tmp = tf.transpose(cur_node_states)  # [D, B*G]
-            source_data_tmp = tf.reshape(source_data_tmp, shape=(-1, 32))  # [D*B, G]
+            source_data_tmp = tf.reshape(source_data_tmp, shape=(-1, node_num))  # [D*B, G]
             target = tf.matmul(source_data_tmp, dense_message_aggregation)  # [D*B, G]
             target = tf.reshape(target, shape=(128, -1))  # [D, B*G]
             aggregated_messages = tf.transpose(target)  # [B*G, D]

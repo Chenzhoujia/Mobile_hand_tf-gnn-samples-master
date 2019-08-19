@@ -24,11 +24,90 @@ import matplotlib
 
 from utils.model_utils import restore
 
+# test_model = 'rich/'
+# level_model = 'point/'
+# detal_name = 'infer_z/'
+# save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
+
 test_model = 'rich/'
 level_model = 'point/'
-detal_name = 'infer_z/'
+detal_name = 'Method_disturbance_fc/'
+methon_name = 'CVPR18_NYU_denseReg'
+detal_name += methon_name + '/'
+node_num = int(14)
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
+def draw_3d_point(inputs, outputs, labels, step): #
+    #['Palm', 'Wrist1', 'Wrist2', 'Thumb.R1', 'Thumb.R2', 'Thumb.T', 'Index.R', 'Index.T', 'Mid.R', 'Mid.T', 'Ring.R', 'Ring.T', 'Pinky.R', 'Pinky.T', 'Mean']
+    label_id = [0,0,1,1,2,2,3,3,4,4,4,5,5,5]
 
+    fig = plt.figure(1)
+    plt.clf()
+    ax = fig.add_subplot(111, projection='3d')
+
+    bone_len = []
+    bone_fake_len = []
+    for draw_i in range(3):
+        if draw_i == 0:
+            pose_show = inputs
+            fig_color = ['r', 'r', 'r', 'r', 'r', 'r']
+        elif draw_i == 1:
+            pose_show = outputs
+            fig_color = ['k', 'k', 'k', 'k', 'k', 'k']
+        else:
+            pose_show = labels
+            fig_color = ['b', 'b', 'b', 'b', 'b', 'b']
+        ax.view_init(azim=20.0, elev=40.0)  # aligns the 3d coord with the camera view
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        """
+        蓝色： 'b' (blue)
+        绿色： 'g' (green)
+        红色： 'r' (red)
+        蓝绿色(墨绿色)： 'c' (cyan)
+        红紫色(洋红)： 'm' (magenta)
+        黄色： 'y' (yellow)
+        黑色： 'k' (black)
+        白色： 'w' (white)
+        """
+        #fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
+        for f in range(6):
+            cur_id = [i for i, x in enumerate(label_id) if x == f] # 属于当前类别的下标
+
+            for point_id in cur_id:
+                ax.scatter(pose_show[point_id, 0], pose_show[point_id, 1],pose_show[point_id, 2], s=30, c=fig_color[f])
+
+                if point_id!=cur_id[-1]:
+                    ax.plot([pose_show[point_id, 0], pose_show[point_id + 1, 0]],
+                            [pose_show[point_id, 1], pose_show[point_id + 1, 1]],
+                            [pose_show[point_id, 2], pose_show[point_id + 1, 2]], color=fig_color[f],
+                            linewidth=2)
+                    len = np.sqrt(np.sum((pose_show[point_id] - pose_show[point_id + 1]) ** 2))
+                    if draw_i == 0:
+                        bone_len.append(round(len,1))
+                    else:
+                        bone_fake_len.append(round(len,1))
+
+                # concat
+                if point_id==cur_id[-1]:
+                    ax.plot([pose_show[point_id, 0], pose_show[13, 0]],
+                            [pose_show[point_id, 1], pose_show[13, 1]],
+                            [pose_show[point_id, 2], pose_show[13, 2]], color=fig_color[f],
+                            linewidth=2)
+                    len = np.sqrt(np.sum((pose_show[point_id] - pose_show[13]) ** 2))
+                    if draw_i == 0:
+                        bone_len.append(round(len,1))
+                    else:
+                        bone_fake_len.append(round(len,1))
+
+
+    ax.set_title(str(bone_len)+"\n"+str(bone_fake_len),fontsize=10)
+    # plt.show()
+    # plt.pause(0.01)
+    directory = save_dataset_dir+"trained_model/test/image/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    plt.savefig(directory + str(step).zfill(5) + ".jpg")
 def draw(input, target, result, select, step):
     #观察序列，查看关键点坐标，确定角度由哪些坐标计算
     fig = plt.figure(1)
@@ -83,13 +162,16 @@ def draw(input, target, result, select, step):
 
 def visualize(fetch_results):
     shape = np.shape(fetch_results['initial_node_features'])
-    graph_num = int(shape[0]/32)
+    graph_num = int(shape[0]/node_num)
     print("绘制"+str(graph_num)+"张图片")
     for step in range(graph_num):
-        draw(fetch_results['initial_node_features'][step*32:(step+1)*32,:],
-                  fetch_results['target_values'][step*32:(step+1)*32,:],
-                  fetch_results['final_output_node_representations'][step*32:(step+1)*32,:],
-                  fetch_results['initial_node_features_select'], step)
+        # draw(fetch_results['initial_node_features'][step*node_num:(step+1)*node_num,:],
+        #           fetch_results['target_values'][step*node_num:(step+1)*node_num,:],
+        #           fetch_results['final_output_node_representations'][step*node_num:(step+1)*node_num,:],
+        #           fetch_results['initial_node_features_select'], step)
+        draw_3d_point(fetch_results['initial_node_features'][step*node_num:(step+1)*node_num,:],
+                   fetch_results['final_output_node_representations'][step*node_num:(step+1)*node_num,:],
+                   fetch_results['target_values'][step*node_num:(step+1)*node_num,:], step)
 
 
 def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, quiet: bool = False):
@@ -129,7 +211,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-07-28-16-25-42_3568_best_model.pickle"
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-19-17-14-37_19016_best_model.pickle"
     test_data_path = save_dataset_dir
     if test_data_path is not None:
         test_data_path = RichPath.create(test_data_path)
