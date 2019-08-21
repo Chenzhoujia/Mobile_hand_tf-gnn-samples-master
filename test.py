@@ -32,10 +32,12 @@ from utils.model_utils import restore
 test_model = 'rich/'
 level_model = 'point/'
 detal_name = 'Method_disturbance_fc/'
-methon_name = 'CVPR18_NYU_denseReg'
-detal_name += methon_name + '/'
-node_num = int(14)
+methon_name = 'NYU_suoluan'
+detal_name += methon_name + '/ICCVW17_NYU_DeepPrior++/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
+
+node_num = int(14)
+
 def draw_3d_point(inputs, outputs, labels, step): #
     #['Palm', 'Wrist1', 'Wrist2', 'Thumb.R1', 'Thumb.R2', 'Thumb.T', 'Index.R', 'Index.T', 'Mid.R', 'Mid.T', 'Ring.R', 'Ring.T', 'Pinky.R', 'Pinky.T', 'Mean']
     label_id = [0,0,1,1,2,2,3,3,4,4,4,5,5,5]
@@ -211,7 +213,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-19-17-14-37_19016_best_model.pickle"
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-21-19-52-15_3776_best_model.pickle"
     test_data_path = save_dataset_dir
     if test_data_path is not None:
         test_data_path = RichPath.create(test_data_path)

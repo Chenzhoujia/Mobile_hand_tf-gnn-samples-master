@@ -38,9 +38,9 @@ node_num = int(14)
 test_model = 'rich/'
 level_model = 'point/'
 detal_name = 'Method_disturbance_fc/'
-methon_name = 'CVPR18_NYU_denseReg'
-detal_name += methon_name + '/'
-
+methon_name = 'NYU_suoluan'
+methon_name = 'NYU_suoluan_dis'
+detal_name += methon_name + '/ICCVW17_NYU_DeepPrior++/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
 def run(args):
@@ -98,9 +98,9 @@ def run(args):
     model.log_line(" Using the following model params: %s" % json.dumps(model_params))
 
     model.initialize_model()
-    with open(save_dataset_dir+'trained_model/HAND_GEN_GGNN_2019-08-19-16-25-03_2385_best_model.pickle', 'rb') as in_file:
-        data_to_load = pickle.load(in_file)
-    model.load_weights(data_to_load['weights'])
+    # with open(save_dataset_dir+'trained_model/HAND_GEN_GGNN_2019-08-21-17-49-12_1065_best_model.pickle', 'rb') as in_file:
+    #     data_to_load = pickle.load(in_file)
+    # model.load_weights(data_to_load['weights'])
     model.train(quiet=args.get('--quiet'), tf_summary_path=save_dataset_dir+'tensorboard')
 
     if args.get('--run-test'):

@@ -16,7 +16,7 @@ src_dir = '/media/chen/4CBEA7F1BEA7D1AE/Download/hand_dataset/NYU/train/'
 test_model = 'rich/'
 level_model = 'point/'
 detal_name = 'Method_disturbance_fc/'
-methon_name = 'suoluan'
+methon_name = 'NYU_suoluan_dis'
 detal_name += methon_name + '/'
 
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
@@ -59,7 +59,7 @@ def pixel2world(x, fx, fy, ux, uy):
 # xyz_scale = [x,y,z]
 # print(xyz_scale) #[220.07752665833493, 219.73800684885566, 219.53804748548316]
 
-def load_Method_disturbance_fc(scare_rate):
+def load_Method_disturbance_fc(this_file_path):
     path = os.path.join(src_dir, 'joint_data.mat')
     mat = sio.loadmat(path)
     joint_uvd = mat['joint_uvd']
@@ -73,7 +73,7 @@ def load_Method_disturbance_fc(scare_rate):
     #转换到世界坐标系 单位mm
     params = get_param('nyu')
     joint_uvd = pixel2world(joint_uvd, *params)
-    joint_uvd = np.vstack((joint_uvd,joint_uvd))
+
     #打乱顺序
     # permutation = np.random.permutation(joint_uvd.shape[0])
     # joint_uvd = joint_uvd[permutation, :, :]
@@ -82,25 +82,20 @@ def load_Method_disturbance_fc(scare_rate):
 
     data_shape = joint_uvd.shape
 
-    for file_path_id, file_path in enumerate(test_file_list_clear):
-        output = np.loadtxt(file_path)
-        output = np.reshape(output, (-1, 14, 3))
+    output = np.loadtxt(this_file_path)
+    output = np.reshape(output, (-1, 14, 3))
 
-        ground_truth = np.loadtxt(
-            '/home/chen/Documents/awesome-hand-pose-estimation-master/evaluation/groundtruth/nyu/nyu_test_groundtruth_label.txt')
-        ground_truth = np.reshape(ground_truth, (-1, 14, 3))
+    ground_truth = np.loadtxt(
+        '/home/chen/Documents/awesome-hand-pose-estimation-master/evaluation/groundtruth/nyu/nyu_test_groundtruth_label.txt')
+    ground_truth = np.reshape(ground_truth, (-1, 14, 3))
 
-        params = get_param('nyu')
-        ground_truth = pixel2world(ground_truth, *params)
-        output = pixel2world(output, *params)
-        if is_normlize:
-            ground_truth, output = normlize_double(ground_truth, output)
+    params = get_param('nyu')
+    ground_truth = pixel2world(ground_truth, *params)
+    output = pixel2world(output, *params)
+    if is_normlize:
+        ground_truth, output = normlize_double(ground_truth, output)
 
-        if file_path_id==0:
-            move_bias = output - ground_truth
-        else:
-            move_bias = np.vstack((output - ground_truth, move_bias))
-
+    move_bias = output - ground_truth
 
     # 生成两个随机整数0~8251和一个随机分量0~1 data_shape[0] 个
     move_bias = np.tile(move_bias,(math.ceil(data_shape[0]/move_bias.shape[0]),1,1))
@@ -109,14 +104,19 @@ def load_Method_disturbance_fc(scare_rate):
     # move_bias = move_bias[permutation, :, :]
     move_bias = move_bias[:data_shape[0]]
 
-    output = move_bias*scare_rate + joint_uvd
     # 增加异常
-    # proportion_array = np.random.rand(data_shape[0])
-    # proportion_array = np.expand_dims(proportion_array,axis=-1)
-    # proportion_array = np.expand_dims(proportion_array,axis=-1)
-    # proportion_array = np.tile(proportion_array,(1,data_shape[1],data_shape[2]))
-    # move_bias = move_bias[permutation1, :, :]*proportion_array \
-    #             + move_bias[permutation2, :, :]*(1-proportion_array)
+    permutation1 = np.random.permutation(move_bias.shape[0])
+    permutation2 = np.random.permutation(move_bias.shape[0])
+
+    proportion_array = np.random.rand(data_shape[0])
+    proportion_array = np.expand_dims(proportion_array,axis=-1)
+    proportion_array = np.expand_dims(proportion_array,axis=-1)
+    proportion_array = np.tile(proportion_array,(1,data_shape[1],data_shape[2]))
+
+    move_bias = move_bias[permutation1, :, :]*proportion_array \
+                + move_bias[permutation2, :, :]*(1-proportion_array)
+
+    output = move_bias + joint_uvd
 
     return joint_uvd, output
 
@@ -229,28 +229,26 @@ def draw_3d_point(labels, outputs, step, method):
         os.makedirs("./data/image/")
     plt.savefig("./data/image/" + method + str(step).zfill(10) + ".png")
 
-def save_obj(obj, name):
-    if not os.path.isdir(save_dataset_dir):
-        os.makedirs(save_dataset_dir)
-    with open(save_dataset_dir+ name + '.pkl', 'wb') as f:
+def save_obj(obj, name, method):
+    if not os.path.isdir(save_dataset_dir + method + '/'):
+        os.makedirs(save_dataset_dir + method + '/')
+    with open(save_dataset_dir + method + '/' + name + '.pkl', 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
-def load_obj(name):
-    with open(save_dataset_dir + name + '.pkl', 'rb') as f:
+def load_obj(name, method):
+    with open(save_dataset_dir + method + '/' + name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
-# method_name = 'no_norm_hand_test_ICCVW17_NYU_DeepPrior++'
-# method_name = 'hand_train'
-# a = load_obj(method_name)
-# #a = a[8252*1:8252*2]
-# errors = []
-# step = 0
-# for sample_id in tqdm(range(0,len(a),100)):
-#     sample =a[sample_id]
-#     draw_3d_point(sample["targets"], sample["node_features"], step, method_name)
-#     step = step + 1
-#     errors.append(np.mean(np.sqrt(np.sum((sample["targets"] - sample["node_features"]) ** 2, axis=1))))
-# errors = np.mean(np.array(errors))
+method_name = 'hand_train'
+a = load_obj(method_name, 'CVPR19_NYU_CrossInfoNet')
+errors = []
+step = 0
+for sample_id in tqdm(range(0,len(a),5)):
+    sample =a[sample_id]
+    draw_3d_point(sample["targets"], sample["node_features"], step, method_name)
+    step = step + 1
+    errors.append(np.mean(np.sqrt(np.sum((sample["targets"] - sample["node_features"]) ** 2, axis=1))))
+errors = np.mean(np.array(errors))
 
 
 #开始写文件
@@ -265,11 +263,13 @@ for file_path in test_file_list:
         method_name.append(file_path_list)
         test_file_list_clear.append(file_path)
 
-
-test_dict_all = []
-for file_path_id, file_path in enumerate(test_file_list_clear):
-    print(file_path)
-    output = np.loadtxt(file_path)
+# 遍历两个数组
+for file_id, this_file_path in enumerate(test_file_list_clear):
+    this_method_name = method_name[file_id]
+    print(this_file_path+'\n')
+    print(this_method_name+'\n')
+    # 保存测试集合
+    output = np.loadtxt(this_file_path)
     output = np.reshape(output, (-1, 14, 3))
     hand_dict_array = []
 
@@ -284,7 +284,7 @@ for file_path_id, file_path in enumerate(test_file_list_clear):
     if is_normlize:
         joint_uvd, move_bias = normlize_double(joint_uvd, move_bias)
 
-    for id in tqdm(range(0,joint_uvd.shape[0])):
+    for id in tqdm(range(joint_uvd.shape[0])):
         one_joint_xyz_norm = joint_uvd[id, :, :]
         one_joint_xyz_norm_mask = move_bias[id, :, :]
 
@@ -294,35 +294,24 @@ for file_path_id, file_path in enumerate(test_file_list_clear):
                      "node_features": one_joint_xyz_norm_mask}
 
         hand_dict_array.append(test_dict)
-        test_dict_all.append(test_dict)
-        #draw_3d_point(one_joint_xyz_norm, one_joint_xyz_norm_mask, id, method_name[file_path_id])
-    if is_normlize:
-        save_obj(hand_dict_array, 'hand_test_' + method_name[file_path_id])
-    else:
-        save_obj(hand_dict_array, 'no_norm_hand_test_' + method_name[file_path_id])
-if is_normlize:
-    save_obj(test_dict_all, 'hand_test')
-else:
-    save_obj(test_dict_all, 'no_norm_hand_test')
+    save_obj(hand_dict_array, 'hand_test',  this_method_name)
 
+    # 保存训练集合
 
-# 保存train
-scare_rate = 1.0
-joint_uvd, move_bias = load_Method_disturbance_fc(scare_rate)
+    # 保存train
+    joint_uvd, move_bias = load_Method_disturbance_fc(this_file_path)
 
-hand_dict_array = []
+    hand_dict_array = []
 
-for id in tqdm(range(joint_uvd.shape[0])):
-    one_joint_xyz_norm = joint_uvd[id,:,:]
-    one_joint_xyz_norm_mask = move_bias[id,:,:]
+    for id in tqdm(range(joint_uvd.shape[0])):
+        one_joint_xyz_norm = joint_uvd[id,:,:]
+        one_joint_xyz_norm_mask = move_bias[id,:,:]
 
-    test_dict = {"targets": one_joint_xyz_norm,
-    "graph": [[0, 1, 1]],
-    "id": "handGen: "+str(id).zfill(7),
-    "node_features": one_joint_xyz_norm_mask}
+        test_dict = {"targets": one_joint_xyz_norm,
+        "graph": [[0, 1, 1]],
+        "id": "handGen: "+str(id).zfill(7),
+        "node_features": one_joint_xyz_norm_mask}
 
-    hand_dict_array.append(test_dict)
-if is_normlize:
-    save_obj(hand_dict_array,'hand_train')
-else:
-    save_obj(hand_dict_array,'no_norm_hand_train')
+        hand_dict_array.append(test_dict)
+
+    save_obj(hand_dict_array,'hand_train', this_method_name)

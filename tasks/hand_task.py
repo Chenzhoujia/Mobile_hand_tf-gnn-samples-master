@@ -292,7 +292,7 @@ class Hand_Task(Sparse_Graph_Task):
                                 max_nodes_per_batch: int) \
             -> Iterable[MinibatchData]:
         if data_fold == DataFold.TRAIN:
-            np.random.shuffle(data)
+            # np.random.shuffle(data)
             out_layer_dropout_keep_prob = self.params['out_layer_dropout_keep_prob']
         else:
             out_layer_dropout_keep_prob = 1.0

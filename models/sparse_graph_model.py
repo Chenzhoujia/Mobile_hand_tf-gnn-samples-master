@@ -12,7 +12,7 @@ from dpu_utils.utils import ThreadedIterator, RichPath
 from tasks import Sparse_Graph_Task, DataFold
 from utils import get_activation
 node_num = int(14)
-
+time_agg_step = 15
 class Sparse_Graph_Model(ABC):
     """
     Abstract superclass of all graph models, defining core model functionality
@@ -158,6 +158,52 @@ class Sparse_Graph_Model(ABC):
 
         # Now add the optimizer bits:
         self.__make_train_step()
+    def __time_aggretation(self, source_data):
+        source_data_extend = source_data
+        for i in range(time_agg_step - 1):
+            source_data_extend = tf.concat(
+                [source_data[(i + 1) * node_num:(i + 2) * node_num, :], source_data_extend], 0)
+        source_data = source_data_extend
+        time_message_aggregation = tf.Variable(name="time", initial_value=tf.ones([time_agg_step]) / time_agg_step,
+                                               dtype=tf.float32)
+        list_source_data = []
+        for i in range(time_agg_step):
+            if i == time_agg_step - 1:
+                list_source_data.append(source_data[i * node_num:])
+            else:
+                list_source_data.append(source_data[i * node_num:
+                                                    -((time_agg_step - 1) - i) * node_num])
+
+        for id, one_list_source_data in enumerate(list_source_data):
+            if id == 0:
+                time_message_aggregation_source_data = one_list_source_data * time_message_aggregation[id]
+            else:
+                time_message_aggregation_source_data += one_list_source_data * time_message_aggregation[id]
+        return time_message_aggregation_source_data
+
+    def __time_concat(self, source_data):
+        source_data_extend = source_data
+        for i in range(time_agg_step - 1):
+            source_data_extend = tf.concat(
+                [source_data[(i + 1) * node_num:(i + 2) * node_num, :], source_data_extend], 0)
+        source_data = source_data_extend
+        time_message_aggregation = tf.Variable(name="time", initial_value=tf.ones([time_agg_step]) / time_agg_step,
+                                               dtype=tf.float32)
+        list_source_data = []
+        for i in range(time_agg_step):
+            if i == time_agg_step - 1:
+                list_source_data.append(source_data[i * node_num:])
+            else:
+                list_source_data.append(source_data[i * node_num:
+                                                    -((time_agg_step - 1) - i) * node_num])
+
+        for id, one_list_source_data in enumerate(list_source_data):
+            if id == 0:
+                time_message_aggregation_source_data = one_list_source_data * time_message_aggregation[id]
+            else:
+                time_message_aggregation_source_data = \
+                    tf.concat([time_message_aggregation_source_data, one_list_source_data * time_message_aggregation[id]], 1)
+        return time_message_aggregation_source_data
 
     def __build_graph_propagation_model(self) -> tf.Tensor:
         h_dim = self.params['hidden_size']
@@ -179,14 +225,20 @@ class Sparse_Graph_Model(ABC):
         #     hc_array[hc_i2 + 6, hc_i2] = 1
         # self.__ops['learnable_Adj'] = tf.constant(hc_array/2, name='learnable_adj', dtype=tf.float32)
         activation_fn = get_activation(self.params['graph_model_activation_function'])
+
+        # 对 self.__ops['initial_node_features'] 进行处理
+        source_data = self.__ops['initial_node_features']
+        source_data = self.__time_concat(source_data)
+
         if self.task.initial_node_feature_size != self.params['hidden_size']:
             self.__ops['projected_node_features'] = \
                 tf.keras.layers.Dense(units=h_dim,
                                       use_bias=False,
                                       activation=activation_fn,
-                                      )(self.__ops['initial_node_features'])
+                                      )(source_data)
 
         cur_node_representations = self.__ops['projected_node_features']
+        #cur_node_representations = self.__time_aggretation(cur_node_representations)
         last_residual_representations = tf.zeros_like(cur_node_representations)
         for layer_idx in range(self.params['graph_num_layers']):
             with tf.variable_scope('gnn_layer_%i' % layer_idx):
