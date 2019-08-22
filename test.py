@@ -33,6 +33,7 @@ test_model = 'rich/'
 level_model = 'point/'
 detal_name = 'Method_disturbance_fc/'
 methon_name = 'NYU_suoluan'
+methon_name = 'NYU_suoluan_dis'
 detal_name += methon_name + '/ICCVW17_NYU_DeepPrior++/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
@@ -213,7 +214,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-21-19-52-15_3776_best_model.pickle"
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-21-20-24-23_13924_best_model.pickle"
     test_data_path = save_dataset_dir
     if test_data_path is not None:
         test_data_path = RichPath.create(test_data_path)

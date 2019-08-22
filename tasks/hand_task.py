@@ -16,6 +16,7 @@ GraphSample = namedtuple('GraphSample', ['adjacency_lists',
                                          'target_values',
                                          ])
 
+use_global = False
 
 class Hand_Task(Sparse_Graph_Task):
     # These magic constants were obtained during dataset generation, as result of normalising
@@ -76,7 +77,10 @@ class Hand_Task(Sparse_Graph_Task):
 
     # -------------------- Data Loading --------------------
     def load_data(self, path: RichPath) -> None:
-        self._loaded_data[DataFold.TRAIN] = self.__load_data(path.join("hand_train.pkl"))
+        if not use_global:
+            self._loaded_data[DataFold.TRAIN] = self.__load_data(path.join("hand_train.pkl"))
+        else:
+            self._loaded_data[DataFold.TRAIN] = self.__load_data("data/hand_gen/rich/point/Method_disturbance_fc/global/hand_train.pkl")
         self._loaded_data[DataFold.VALIDATION] = self.__load_data(path.join("hand_test.pkl"))
 
     def load_eval_data_from_path(self, path: RichPath) -> Iterable[Any]:

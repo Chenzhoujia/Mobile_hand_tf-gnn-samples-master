@@ -16,7 +16,7 @@ src_dir = '/media/chen/4CBEA7F1BEA7D1AE/Download/hand_dataset/NYU/train/'
 test_model = 'rich/'
 level_model = 'point/'
 detal_name = 'Method_disturbance_fc/'
-methon_name = 'NYU_suoluan_dis'
+methon_name = 'NYU_suoluan'
 detal_name += methon_name + '/'
 
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
@@ -105,16 +105,14 @@ def load_Method_disturbance_fc(this_file_path):
     move_bias = move_bias[:data_shape[0]]
 
     # 增加异常
-    permutation1 = np.random.permutation(move_bias.shape[0])
-    permutation2 = np.random.permutation(move_bias.shape[0])
-
-    proportion_array = np.random.rand(data_shape[0])
-    proportion_array = np.expand_dims(proportion_array,axis=-1)
-    proportion_array = np.expand_dims(proportion_array,axis=-1)
-    proportion_array = np.tile(proportion_array,(1,data_shape[1],data_shape[2]))
-
-    move_bias = move_bias[permutation1, :, :]*proportion_array \
-                + move_bias[permutation2, :, :]*(1-proportion_array)
+    # permutation1 = np.random.permutation(move_bias.shape[0])
+    # permutation2 = np.random.permutation(move_bias.shape[0])
+    # proportion_array = np.random.rand(data_shape[0])
+    # proportion_array = np.expand_dims(proportion_array,axis=-1)
+    # proportion_array = np.expand_dims(proportion_array,axis=-1)
+    # proportion_array = np.tile(proportion_array,(1,data_shape[1],data_shape[2]))
+    # move_bias = move_bias[permutation1, :, :]*proportion_array \
+    #             + move_bias[permutation2, :, :]*(1-proportion_array)
 
     output = move_bias + joint_uvd
 
@@ -239,8 +237,8 @@ def load_obj(name, method):
     with open(save_dataset_dir + method + '/' + name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
-method_name = 'hand_train'
-a = load_obj(method_name, 'CVPR19_NYU_CrossInfoNet')
+method_name = 'hand_test'
+a = load_obj(method_name, '3DV18_NYU_DeepHPS')
 errors = []
 step = 0
 for sample_id in tqdm(range(0,len(a),5)):

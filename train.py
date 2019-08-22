@@ -40,7 +40,7 @@ level_model = 'point/'
 detal_name = 'Method_disturbance_fc/'
 methon_name = 'NYU_suoluan'
 methon_name = 'NYU_suoluan_dis'
-detal_name += methon_name + '/ICCVW17_NYU_DeepPrior++/'
+detal_name += methon_name + '/3DV18_NYU_DeepHPS/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
 def run(args):

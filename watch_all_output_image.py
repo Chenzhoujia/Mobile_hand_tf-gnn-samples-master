@@ -16,8 +16,8 @@ src_dir = '/media/chen/4CBEA7F1BEA7D1AE/Download/hand_dataset/NYU/train/'
 test_model = 'rich/'
 level_model = 'point/'
 detal_name = 'Method_disturbance_fc/'
-methon_name = 'suoluan'
-detal_name += methon_name + '/'
+methon_name = 'global/'
+detal_name += methon_name
 
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 is_normlize = True
@@ -240,17 +240,17 @@ def load_obj(name):
         return pickle.load(f)
 
 # method_name = 'no_norm_hand_test_ICCVW17_NYU_DeepPrior++'
-# method_name = 'hand_train'
-# a = load_obj(method_name)
-# #a = a[8252*1:8252*2]
-# errors = []
-# step = 0
-# for sample_id in tqdm(range(0,len(a),100)):
-#     sample =a[sample_id]
-#     draw_3d_point(sample["targets"], sample["node_features"], step, method_name)
-#     step = step + 1
-#     errors.append(np.mean(np.sqrt(np.sum((sample["targets"] - sample["node_features"]) ** 2, axis=1))))
-# errors = np.mean(np.array(errors))
+method_name = 'hand_test'
+a = load_obj(method_name)
+#a = a[8252*1:8252*2]
+errors = []
+step = 0
+for sample_id in tqdm(range(0,len(a),100)):
+    sample =a[sample_id]
+    draw_3d_point(sample["targets"], sample["node_features"], step, method_name)
+    step = step + 1
+    errors.append(np.mean(np.sqrt(np.sum((sample["targets"] - sample["node_features"]) ** 2, axis=1))))
+errors = np.mean(np.array(errors))
 
 
 #开始写文件
