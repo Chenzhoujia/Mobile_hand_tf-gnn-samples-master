@@ -1,20 +1,36 @@
+import shutil
+
 import numpy as np
 import os
-
+import numpy as np
+import matplotlib.pyplot as plt
 test_model = 'rich/'
 level_model = 'point/'
-detal_name = 'Random_disturbance/'
-save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name +"trained_model/"
+detal_name = 'smart_motion_hand/'
+methon_name = 'None_control'
+detal_name += methon_name + '/'
+save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
+save_dataset_dir += "trained_model/"
+
+
+tmp_image = save_dataset_dir+"learnable_ADJ/"
+if not os.path.exists(tmp_image):
+    os.mkdir(tmp_image)
+else:
+    shutil.rmtree(tmp_image)
+    os.mkdir(tmp_image)
 
 learnable_Adj_array = np.load(save_dataset_dir+"learnable_Adj_array.npy")
 preloss_array = np.load(save_dataset_dir+"preloss_List.npy")
+time_message_aggregation_array = np.load(save_dataset_dir+"time_message_aggregation_array.npy")
+shape = np.shape(time_message_aggregation_array)
+plt.clf()
+plt.pcolor(time_message_aggregation_array)
+plt.colorbar()
+plt.savefig(save_dataset_dir+"learnable_ADJ/" + "time_message_aggregation_array.jpg")
+
 shape = np.shape(learnable_Adj_array)
-import numpy as np
-import matplotlib.pyplot as plt
 
-
-if not os.path.isdir(save_dataset_dir+"learnable_ADJ/"):
-    os.makedirs(save_dataset_dir+"learnable_ADJ/")
 # 绘制loss变化
 plt.clf()
 plt.pcolor(preloss_array[-50:,:])

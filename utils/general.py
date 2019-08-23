@@ -55,6 +55,39 @@ class NetworkOps(object):
             out_tensor = tf.nn.bias_add(tmp_result, biases, name='out')
 
             return out_tensor
+
+    """
+    1、value：在注释中，value的格式为：[batch, in_width, in_channels]，batch为样本维，表示多少个样本，in_width为宽度维，表示样本的宽度，in_channels维通道维，表示样本有多少个通道。 
+      事实上，也可以把格式看作如下:[batch, 行数, 列数]，把每一个样本看作一个平铺开的二维数组。这样的话可以方便理解。
+
+    2、filters：在注释中，filters的格式为：[filter_width, in_channels, out_channels]。按照value的第二种看法，filter_width可以看作每次与value进行卷积的行数，in_channels表示value一共有多少列（与value中的in_channels相对应）。out_channels表示输出通道，可以理解为一共有多少个卷积核，即卷积核的数目。
+
+    3、stride：一个整数，表示步长，每次（向下）移动的距离（TensorFlow中解释是向右移动的距离，这里可以看作向下移动的距离）。
+
+    4、padding：同conv2d，value是否需要在下方填补0。
+
+    5、name：名称。可省略。
+    """
+
+    @classmethod
+    def conv1d(cls, in_tensor, layer_name, kernel_size, stride, out_chan, trainable=True):
+        with tf.variable_scope(layer_name):
+            in_size = in_tensor.get_shape().as_list()
+
+            kernel_shape = [kernel_size, in_size[2], out_chan]
+
+            # conv
+            kernel = tf.get_variable('weights', kernel_shape, tf.float32,
+                                     tf.contrib.layers.xavier_initializer_conv2d(), trainable=trainable, collections=['wd', 'variables', 'filters'])
+            tmp_result = tf.nn.conv1d(in_tensor, kernel, stride, padding='VALID')
+
+            # bias
+            biases = tf.get_variable('biases', [kernel_shape[2]], tf.float32,
+                                     tf.constant_initializer(0.0001), trainable=trainable, collections=['wd', 'variables', 'biases'])
+            out_tensor = tf.nn.bias_add(tmp_result, biases, name='out')
+
+            return out_tensor
+
     @classmethod
     def depthwise_conv(cls, in_tensor, layer_name, kernel_size, stride, trainable=True):
         with tf.variable_scope(layer_name):
@@ -84,6 +117,11 @@ class NetworkOps(object):
     @classmethod
     def conv_relu6(cls, in_tensor, layer_name, kernel_size, stride, out_chan, trainable=True):
         tensor = cls.conv(in_tensor, layer_name, kernel_size, stride, out_chan, trainable)
+        out_tensor = cls.leaky_relu6(tensor, name='out')
+        return out_tensor
+    @classmethod
+    def conv1_relu6(cls, in_tensor, layer_name, kernel_size, stride, out_chan, trainable=True):
+        tensor = cls.conv1d(in_tensor, layer_name, kernel_size, stride, out_chan, trainable)
         out_tensor = cls.leaky_relu6(tensor, name='out')
         return out_tensor
 

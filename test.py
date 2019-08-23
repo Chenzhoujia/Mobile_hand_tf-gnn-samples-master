@@ -31,13 +31,12 @@ from utils.model_utils import restore
 
 test_model = 'rich/'
 level_model = 'point/'
-detal_name = 'Method_disturbance_fc/'
-methon_name = 'NYU_suoluan'
-methon_name = 'NYU_suoluan_dis'
-detal_name += methon_name + '/ICCVW17_NYU_DeepPrior++/'
+detal_name = 'smart_motion_hand/'
+methon_name = 'tip_control'
+detal_name += methon_name + '/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
-node_num = int(14)
+node_num = int(36)
 
 def draw_3d_point(inputs, outputs, labels, step): #
     #['Palm', 'Wrist1', 'Wrist2', 'Thumb.R1', 'Thumb.R2', 'Thumb.T', 'Index.R', 'Index.T', 'Mid.R', 'Mid.T', 'Ring.R', 'Ring.T', 'Pinky.R', 'Pinky.T', 'Mean']
@@ -111,51 +110,60 @@ def draw_3d_point(inputs, outputs, labels, step): #
     if not os.path.exists(directory):
         os.makedirs(directory)
     plt.savefig(directory + str(step).zfill(5) + ".jpg")
-def draw(input, target, result, select, step):
-    #观察序列，查看关键点坐标，确定角度由哪些坐标计算
-    fig = plt.figure(1)
-    fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
-    fig.clear()
+def draw_3d_point_all(inputs, outputs, labels, step): #
+    #['Palm', 'Wrist1', 'Wrist2', 'Thumb.R1', 'Thumb.R2', 'Thumb.T', 'Index.R', 'Index.T', 'Mid.R', 'Mid.T', 'Ring.R', 'Ring.T', 'Pinky.R', 'Pinky.T', 'Mean']
+    label_id = [0,0,1,1,2,2,3,3,4,4,4,5,5,5]
 
-    for ax_id in range(3):
-        if ax_id==0:
-            ax = fig.add_subplot(221, projection='3d')
-            draw = input
-            title = "input"
-        elif ax_id==1:
-            ax = fig.add_subplot(222, projection='3d')
-            draw = target
-            title = "target"
+    fig = plt.figure(1)
+    plt.clf()
+    ax = fig.add_subplot(111, projection='3d')
+
+    bone_len = []
+    bone_fake_len = []
+    for draw_i in range(3):
+        if draw_i == 0:
+            pose_show = inputs
+            fig_color = ['r', 'r', 'r', 'r', 'r', 'r']
+        elif draw_i == 1:
+            pose_show = outputs
+            fig_color = ['k', 'k', 'k', 'k', 'k', 'k']
         else:
-            ax = fig.add_subplot(223, projection='3d')
-            draw = result
-            title = "result"
-        ax.set_title(title)
-        ax.view_init(azim=45.0, elev=20.0)  # aligns the 3d coord with the camera view
+            pose_show = labels
+            fig_color = ['b', 'b', 'b', 'b', 'b', 'b']
+        ax.view_init(azim=20.0, elev=40.0)  # aligns the 3d coord with the camera view
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('z')
-        ax.set_xlim((-1, 1))
-        ax.set_ylim((-1, 1))
-        ax.set_zlim((-1, 1))
-        fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
+        """
+        蓝色： 'b' (blue)
+        绿色： 'g' (green)
+        红色： 'r' (red)
+        蓝绿色(墨绿色)： 'c' (cyan)
+        红紫色(洋红)： 'm' (magenta)
+        黄色： 'y' (yellow)
+        黑色： 'k' (black)
+        白色： 'w' (white)
+        """
+        #fig_color = ['c', 'm', 'y', 'g', 'r', 'b']
         for f in range(6):
             if f < 5:
                 for bone in range(5):
-                    ax.plot([draw[f * 6+bone, 0], draw[f * 6 +bone+ 1, 0]],
-                            [draw[f * 6+bone, 1], draw[f * 6 +bone+ 1, 1]],
-                            [draw[f * 6+bone, 2], draw[f * 6 +bone+ 1, 2]], color=fig_color[f], linewidth=2)
+                    ax.plot([pose_show[f * 6 + bone, 0], pose_show[f * 6 + bone + 1, 0]],
+                            [pose_show[f * 6 + bone, 1], pose_show[f * 6 + bone + 1, 1]],
+                            [pose_show[f * 6 + bone, 2], pose_show[f * 6 + bone + 1, 2]], color=fig_color[f], linewidth=2)
                 if f == 4:
-                    ax.plot([draw[f * 6 + bone + 1, 0], draw[30, 0]],
-                            [draw[f * 6 + bone + 1, 1], draw[30, 1]],
-                            [draw[f * 6 + bone + 1, 2], draw[30, 2]], color=fig_color[f], linewidth=2)
+                    ax.plot([pose_show[f * 6 + bone + 1, 0], pose_show[30, 0]],
+                            [pose_show[f * 6 + bone + 1, 1], pose_show[30, 1]],
+                            [pose_show[f * 6 + bone + 1, 2], pose_show[30, 2]], color=fig_color[f], linewidth=2)
                 else:
-                    ax.plot([draw[f * 6 + bone + 1, 0], draw[31, 0]],
-                            [draw[f * 6 + bone + 1, 1], draw[31, 1]],
-                            [draw[f * 6 + bone + 1, 2], draw[31, 2]], color=fig_color[f], linewidth=2)
-            # ax.scatter(uvd_pt[f * 2, 0], uvd_pt[f * 2, 1], uvd_pt[f * 2, 2], s=60, c=fig_color[f])
-            ax.scatter(draw[f*6:(f+1)*6, 0], draw[f*6:(f+1)*6, 1], draw[f*6:(f+1)*6, 2], s=30, c=fig_color[f])
+                    ax.plot([pose_show[f * 6 + bone + 1, 0], pose_show[31, 0]],
+                            [pose_show[f * 6 + bone + 1, 1], pose_show[31, 1]],
+                            [pose_show[f * 6 + bone + 1, 2], pose_show[31, 2]], color=fig_color[f], linewidth=2)
+            ax.scatter(pose_show[f * 6:(f + 1) * 6, 0], pose_show[f * 6:(f + 1) * 6, 1], pose_show[f * 6:(f + 1) * 6, 2], s=30,
+                       c=fig_color[f])
 
+
+    ax.set_title(str(bone_len)+"\n"+str(bone_fake_len),fontsize=10)
     # plt.show()
     # plt.pause(0.01)
     directory = save_dataset_dir+"trained_model/test/image/"
@@ -172,9 +180,10 @@ def visualize(fetch_results):
         #           fetch_results['target_values'][step*node_num:(step+1)*node_num,:],
         #           fetch_results['final_output_node_representations'][step*node_num:(step+1)*node_num,:],
         #           fetch_results['initial_node_features_select'], step)
-        draw_3d_point(fetch_results['initial_node_features'][step*node_num:(step+1)*node_num,:],
-                   fetch_results['final_output_node_representations'][step*node_num:(step+1)*node_num,:],
-                   fetch_results['target_values'][step*node_num:(step+1)*node_num,:], step)
+        draw_3d_point_all(fetch_results['initial_node_features'][step*node_num:(step+1)*node_num,:],
+                        fetch_results['final_output_node_representations'][step*node_num:(step+1)*node_num,:],
+                        fetch_results['target_values'][step*node_num:(step+1)*node_num,:],
+                          step)
 
 
 def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, quiet: bool = False):
@@ -214,7 +223,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-21-20-24-23_13924_best_model.pickle"
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-23-10-19-19_19476_best_model.pickle"
     test_data_path = save_dataset_dir
     if test_data_path is not None:
         test_data_path = RichPath.create(test_data_path)

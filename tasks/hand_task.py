@@ -9,14 +9,22 @@ from .sparse_graph_task import Sparse_Graph_Task, DataFold, MinibatchData
 from utils import MLP
 import pickle
 from tqdm import tqdm
-node_num = int(14)
+node_num = int(36)
+use_global = False
+use_control = True
 GraphSample = namedtuple('GraphSample', ['adjacency_lists',
                                          'type_to_node_to_num_incoming_edges',
                                          'node_features',
                                          'target_values',
                                          ])
+GraphSample_control = namedtuple('GraphSample', ['adjacency_lists',
+                                         'type_to_node_to_num_incoming_edges',
+                                         'node_features',
+                                         'target_values',
+                                         'target_value_control'
+                                         ])
 
-use_global = False
+
 
 class Hand_Task(Sparse_Graph_Task):
     # These magic constants were obtained during dataset generation, as result of normalising
@@ -110,12 +118,21 @@ class Hand_Task(Sparse_Graph_Task):
         for d in tqdm(raw_data):
             (type_to_adjacency_list, type_to_num_incoming_edges) = \
                 self.__graph_to_adjacency_lists(d['graph'], num_nodes=len(d["node_features"]))
-            processed_graphs.append(
-                GraphSample(adjacency_lists=type_to_adjacency_list,
-                            type_to_node_to_num_incoming_edges=type_to_num_incoming_edges,
-                            node_features=d["node_features"],
-                            target_values=d["targets"],
-                            ))
+            if use_control:
+                processed_graphs.append(
+                    GraphSample_control(adjacency_lists=type_to_adjacency_list,
+                                type_to_node_to_num_incoming_edges=type_to_num_incoming_edges,
+                                node_features=d["node_features"],
+                                target_values=d["targets"],
+                                target_value_control=d["targets_control"]
+                                ))
+            else:
+                processed_graphs.append(
+                    GraphSample(adjacency_lists=type_to_adjacency_list,
+                                type_to_node_to_num_incoming_edges=type_to_num_incoming_edges,
+                                node_features=d["node_features"],
+                                target_values=d["targets"],
+                                ))
         return processed_graphs
 
     def __graph_to_adjacency_lists(self, graph: Iterable[Tuple[int, int, int]], num_nodes: int) \
@@ -162,6 +179,11 @@ class Hand_Task(Sparse_Graph_Task):
         """
         placeholders['initial_node_features'] = \
             tf.placeholder(dtype=tf.float32, shape=[None, self.initial_node_feature_size], name='initial_node_features')
+        if use_control:
+            placeholders['targets_control'] = \
+                tf.placeholder(dtype=tf.float32, shape=[None, self.initial_node_feature_size],
+                               name='targets_control')
+            model_ops['targets_control'] = placeholders['targets_control']
         #先用常量对初始特征进行mask。
         placeholders['adjacency_lists'] = \
             [tf.placeholder(dtype=tf.int32, shape=[None, 2], name='adjacency_e%s' % e)
@@ -307,6 +329,10 @@ class Hand_Task(Sparse_Graph_Task):
             num_graphs_in_batch = 0
             batch_node_features = []  # type: List[np.ndarray]
             batch_target_task_values = []
+
+            if use_control:
+                batch_target_task_values_control = []
+
             batch_adjacency_lists = [[] for _ in range(self.num_edge_types)]  # type: List[List[np.ndarray]]
             batch_type_to_num_incoming_edges = []
             batch_graph_nodes_list = []
@@ -320,6 +346,9 @@ class Hand_Task(Sparse_Graph_Task):
                 batch_graph_nodes_list.append(np.full(shape=[num_nodes_in_graph],
                                                       fill_value=num_graphs_in_batch,
                                                       dtype=np.int32))
+                if use_control:
+                    batch_target_task_values_control.extend(cur_graph.target_value_control)
+
                 for i in range(self.num_edge_types):
                     batch_adjacency_lists[i].append(cur_graph.adjacency_lists[i] + node_offset)
 
@@ -330,13 +359,24 @@ class Hand_Task(Sparse_Graph_Task):
                 num_graphs_in_batch += 1
                 node_offset += num_nodes_in_graph
 
-            batch_feed_dict = {
-                model_placeholders['initial_node_features']: np.array(batch_node_features),
-                model_placeholders['type_to_num_incoming_edges']: np.concatenate(batch_type_to_num_incoming_edges, axis=1),
-                model_placeholders['graph_nodes_list']: np.concatenate(batch_graph_nodes_list),
-                model_placeholders['target_values']: np.array(batch_target_task_values),
-                # model_placeholders['out_layer_dropout_keep_prob']: out_layer_dropout_keep_prob,
-            }
+            if use_control:
+                batch_feed_dict = {
+                    model_placeholders['initial_node_features']: np.array(batch_node_features),
+                    model_placeholders['type_to_num_incoming_edges']: np.concatenate(batch_type_to_num_incoming_edges, axis=1),
+                    model_placeholders['graph_nodes_list']: np.concatenate(batch_graph_nodes_list),
+                    model_placeholders['target_values']: np.array(batch_target_task_values),
+                    model_placeholders['targets_control']: np.array(batch_target_task_values_control)
+                    # model_placeholders['out_layer_dropout_keep_prob']: out_layer_dropout_keep_prob,
+                }
+            else:
+                batch_feed_dict = {
+                    model_placeholders['initial_node_features']: np.array(batch_node_features),
+                    model_placeholders['type_to_num_incoming_edges']: np.concatenate(batch_type_to_num_incoming_edges,
+                                                                                     axis=1),
+                    model_placeholders['graph_nodes_list']: np.concatenate(batch_graph_nodes_list),
+                    model_placeholders['target_values']: np.array(batch_target_task_values),
+                    # model_placeholders['out_layer_dropout_keep_prob']: out_layer_dropout_keep_prob,
+                }
 
             # Merge adjacency lists:
             num_edges = 0

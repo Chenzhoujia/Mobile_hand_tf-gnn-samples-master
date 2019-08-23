@@ -11,8 +11,12 @@ from dpu_utils.utils import ThreadedIterator, RichPath
 
 from tasks import Sparse_Graph_Task, DataFold
 from utils import get_activation
-node_num = int(14)
+from utils.general import NetworkOps
+
+ops = NetworkOps
+node_num = int(36)
 time_agg_step = 15
+use_control = True
 class Sparse_Graph_Model(ABC):
     """
     Abstract superclass of all graph models, defining core model functionality
@@ -164,7 +168,7 @@ class Sparse_Graph_Model(ABC):
             source_data_extend = tf.concat(
                 [source_data[(i + 1) * node_num:(i + 2) * node_num, :], source_data_extend], 0)
         source_data = source_data_extend
-        time_message_aggregation = tf.Variable(name="time", initial_value=tf.ones([time_agg_step]) / time_agg_step,
+        self.__ops['time_message_aggregation'] = tf.Variable(name="time", initial_value=tf.ones([time_agg_step]) / time_agg_step,
                                                dtype=tf.float32)
         list_source_data = []
         for i in range(time_agg_step):
@@ -176,9 +180,9 @@ class Sparse_Graph_Model(ABC):
 
         for id, one_list_source_data in enumerate(list_source_data):
             if id == 0:
-                time_message_aggregation_source_data = one_list_source_data * time_message_aggregation[id]
+                time_message_aggregation_source_data = one_list_source_data * self.__ops['time_message_aggregation'][id]
             else:
-                time_message_aggregation_source_data += one_list_source_data * time_message_aggregation[id]
+                time_message_aggregation_source_data += one_list_source_data * self.__ops['time_message_aggregation'][id]
         return time_message_aggregation_source_data
 
     def __time_concat(self, source_data):
@@ -187,7 +191,7 @@ class Sparse_Graph_Model(ABC):
             source_data_extend = tf.concat(
                 [source_data[(i + 1) * node_num:(i + 2) * node_num, :], source_data_extend], 0)
         source_data = source_data_extend
-        time_message_aggregation = tf.Variable(name="time", initial_value=tf.ones([time_agg_step]) / time_agg_step,
+        self.__ops['time_message_aggregation'] = tf.Variable(name="time", initial_value=tf.ones([time_agg_step]) / time_agg_step,
                                                dtype=tf.float32)
         list_source_data = []
         for i in range(time_agg_step):
@@ -196,16 +200,28 @@ class Sparse_Graph_Model(ABC):
             else:
                 list_source_data.append(source_data[i * node_num:
                                                     -((time_agg_step - 1) - i) * node_num])
-
+        time_message_aggregation_source_data = None
         for id, one_list_source_data in enumerate(list_source_data):
             if id == 0:
-                time_message_aggregation_source_data = one_list_source_data * time_message_aggregation[id]
+                time_message_aggregation_source_data = one_list_source_data * self.__ops['time_message_aggregation'][id]
             else:
                 time_message_aggregation_source_data = \
-                    tf.concat([time_message_aggregation_source_data, one_list_source_data * time_message_aggregation[id]], 1)
-        return time_message_aggregation_source_data
+                    tf.concat([time_message_aggregation_source_data, one_list_source_data * self.__ops['time_message_aggregation'][id]], 1)
+        return time_message_aggregation_source_data, list_source_data[-1]
 
-    def __build_graph_propagation_model(self) -> tf.Tensor:
+    def __use_control(self, source_data):
+        targets_control = self.__ops['targets_control']
+
+        source_data_sum = tf.reduce_sum(targets_control, 1)
+        targets_control_bool = tf.equal(source_data_sum, 0)
+        targets_control_bool = tf.expand_dims(targets_control_bool, -1)
+        targets_control_bool = tf.tile(targets_control_bool, (1, 3))
+        targets_control_bool = tf.cast(targets_control_bool, tf.float32) # 非控制点处为1
+
+        source_data = targets_control + source_data * targets_control_bool
+
+        return source_data
+    def __build_graph_propagation_model(self):
         h_dim = self.params['hidden_size']
         self.__ops['learnable_Adj'] = tf.Variable(np.ones([node_num,node_num])/node_num, name='learnable_adj', dtype=tf.float32)
         #self.__ops['learnable_Adj'] = tf.constant(np.ones([32,32])/2, name='learnable_adj', dtype=tf.float32)
@@ -228,9 +244,26 @@ class Sparse_Graph_Model(ABC):
 
         # 对 self.__ops['initial_node_features'] 进行处理
         source_data = self.__ops['initial_node_features']
-        source_data = self.__time_concat(source_data)
+        source_data, last_time_step = self.__time_concat(source_data)
+        if use_control:
+            # 用叠加的卷积层代替 单层全连接
 
-        if self.task.initial_node_feature_size != self.params['hidden_size']:
+            # source_data = tf.reshape(source_data, shape=(-1, time_agg_step, 3))
+            # out_chan_list = [4,8,16,32,64,h_dim-3]
+            # out_chan_list = [4 for i in range((time_agg_step - 1) - len(out_chan_list))] + out_chan_list
+            #
+            # for i, out_chan in enumerate(out_chan_list):
+            #     source_data = ops.conv1_relu6(
+            #         source_data, 'time_agg_step_%d' % (i), kernel_size=2, stride=1,
+            #         out_chan=out_chan, trainable=True)
+            # self.__ops['projected_node_features'] =  tf.squeeze(source_data)
+
+            self.__ops['projected_node_features'] = \
+                tf.keras.layers.Dense(units=h_dim-3,
+                                      use_bias=False,
+                                      activation=activation_fn,
+                                      )(source_data)
+        else:
             self.__ops['projected_node_features'] = \
                 tf.keras.layers.Dense(units=h_dim,
                                       use_bias=False,
@@ -238,6 +271,11 @@ class Sparse_Graph_Model(ABC):
                                       )(source_data)
 
         cur_node_representations = self.__ops['projected_node_features']
+
+        if use_control:
+            last_time_step = self.__use_control(last_time_step)
+            cur_node_representations = tf.concat([cur_node_representations, last_time_step],1)
+
         #cur_node_representations = self.__time_aggretation(cur_node_representations)
         last_residual_representations = tf.zeros_like(cur_node_representations)
         for layer_idx in range(self.params['graph_num_layers']):
@@ -357,6 +395,7 @@ class Sparse_Graph_Model(ABC):
             fetch_dict['initial_node_features_select'] = self.__ops['initial_node_features_select']
             fetch_dict['num_nodes'] = self.__ops['num_nodes']
             fetch_dict['learnable_Adj'] = self.__ops['learnable_Adj']
+            fetch_dict['time_message_aggregation'] = self.__ops['time_message_aggregation']
             fetch_dict['pre_loss'] = self.__ops['task_metrics']['pre_loss']
 
             fetch_results = self.sess.run(fetch_dict, feed_dict=batch_data.feed_dict)
@@ -408,6 +447,7 @@ class Sparse_Graph_Model(ABC):
             (best_valid_metric, best_val_metric_epoch, best_val_metric_descr) = (float("+inf"), 0, "")
             learnable_Adj_List = []
             preloss_List = []
+            time_message_aggregation_List = []
             for epoch in range(1, self.params['max_epochs'] + 1):
                 self.log_line("== Epoch %i" % epoch)
 
@@ -428,6 +468,10 @@ class Sparse_Graph_Model(ABC):
                 learnable_Adj_List.append(fetch_results['learnable_Adj'])
                 learnable_Adj_array = np.array(learnable_Adj_List)
                 np.save(self.result_dir+"/learnable_Adj_array.npy",learnable_Adj_array)
+
+                time_message_aggregation_List.append(fetch_results['time_message_aggregation'])
+                time_message_aggregation_array = np.array(time_message_aggregation_List)
+                np.save(self.result_dir+"/time_message_aggregation_array.npy",time_message_aggregation_array)
 
                 preloss_List.append(fetch_results['pre_loss'])
                 preloss_List_array = np.array(preloss_List)

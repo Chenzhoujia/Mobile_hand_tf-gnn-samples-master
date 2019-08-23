@@ -3,7 +3,7 @@ from typing import List, Optional
 import tensorflow as tf
 
 from utils import get_gated_unit, get_aggregation_function
-node_num = int(14)
+node_num = int(36)
 
 def sparse_ggnn_layer(node_embeddings: tf.Tensor,
                       adjacency_lists: List[tf.Tensor],

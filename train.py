@@ -28,7 +28,7 @@ from dpu_utils.utils import run_and_debug, RichPath, git_tag_run
 
 from utils.model_utils import name_to_model_class, name_to_task_class, restore
 from test import test
-node_num = int(14)
+node_num = int(36)
 
 # test_model = 'rich/'
 # level_model = 'all/'
@@ -37,10 +37,9 @@ node_num = int(14)
 
 test_model = 'rich/'
 level_model = 'point/'
-detal_name = 'Method_disturbance_fc/'
-methon_name = 'NYU_suoluan'
-methon_name = 'NYU_suoluan_dis'
-detal_name += methon_name + '/3DV18_NYU_DeepHPS/'
+detal_name = 'smart_motion_hand/'
+methon_name = 'tip_control'
+detal_name += methon_name + '/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
 def run(args):
@@ -98,9 +97,9 @@ def run(args):
     model.log_line(" Using the following model params: %s" % json.dumps(model_params))
 
     model.initialize_model()
-    # with open(save_dataset_dir+'trained_model/HAND_GEN_GGNN_2019-08-21-17-49-12_1065_best_model.pickle', 'rb') as in_file:
-    #     data_to_load = pickle.load(in_file)
-    # model.load_weights(data_to_load['weights'])
+    with open(save_dataset_dir+'trained_model/HAND_GEN_GGNN_2019-08-23-10-19-19_19476_best_model.pickle', 'rb') as in_file:
+        data_to_load = pickle.load(in_file)
+    model.load_weights(data_to_load['weights'])
     model.train(quiet=args.get('--quiet'), tf_summary_path=save_dataset_dir+'tensorboard')
 
     if args.get('--run-test'):
