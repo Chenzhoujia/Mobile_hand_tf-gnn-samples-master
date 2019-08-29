@@ -267,7 +267,9 @@ class Hand_Task(Sparse_Graph_Task):
                 # 计算loss
                 per_graph_outputs = per_node_gated_outputs
                 model_ops['final_output_node_representations'] = placeholders['initial_node_features'] - per_graph_outputs
-                per_graph_outputs = tf.add(per_graph_outputs, 0, name='final_output_node_representations')
+
+                model_ops['final_output_node_representations'] = tf.add(model_ops['final_output_node_representations'],
+                                                                        0, name='final_output_node_representations')
                 # 网络估计的是 output = inputs - labels 输入的-输出的 差
                 # 最终可视化的时候 展现的是 inputs - outputs
                 per_graph_errors = per_graph_outputs - \

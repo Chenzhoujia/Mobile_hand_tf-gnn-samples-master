@@ -223,7 +223,7 @@ def test(model_path: str, test_data_path: Optional[RichPath], result_dir: str, q
 
 
 def run(args):
-    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-23-10-19-19_19476_best_model.pickle"
+    model_path = save_dataset_dir + "trained_model/HAND_GEN_GGNN_2019-08-23-16-24-37_4788_best_model.pickle"
     test_data_path = save_dataset_dir
     if test_data_path is not None:
         test_data_path = RichPath.create(test_data_path)

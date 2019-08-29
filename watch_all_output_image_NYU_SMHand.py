@@ -192,7 +192,10 @@ joint_uvd = pixel2world(joint_uvd, *params)
 if is_normlize:
     joint_uvd = normlize(joint_uvd)
 joint_uvd_move = hand_move(joint_uvd)
-joint_uvd_move_keep = mask_control_point(joint_uvd_move, [0,6,12,18,24])
+
+keep_point_list = [0,6,12,18,24]
+#keep_point_list = [18]
+joint_uvd_move_keep = mask_control_point(joint_uvd_move, keep_point_list)
 
 for id in tqdm(range(joint_uvd.shape[0])):
     node_features = joint_uvd[id, :, :]
@@ -226,7 +229,7 @@ joint_uvd = pixel2world(joint_uvd, *params)
 if is_normlize:
     joint_uvd = normlize(joint_uvd)
 joint_uvd_move = hand_move(joint_uvd)
-joint_uvd_move_keep = mask_control_point(joint_uvd_move, [0,6,12,18,24])
+joint_uvd_move_keep = mask_control_point(joint_uvd_move, keep_point_list)
 
 for id in tqdm(range(joint_uvd.shape[0])):
     node_features = joint_uvd[id, :, :]

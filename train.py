@@ -38,7 +38,7 @@ node_num = int(36)
 test_model = 'rich/'
 level_model = 'point/'
 detal_name = 'smart_motion_hand/'
-methon_name = 'tip_control'
+methon_name = 'one_tip_control'
 detal_name += methon_name + '/'
 save_dataset_dir = "data/hand_gen/"+test_model+level_model+detal_name
 
@@ -97,9 +97,9 @@ def run(args):
     model.log_line(" Using the following model params: %s" % json.dumps(model_params))
 
     model.initialize_model()
-    with open(save_dataset_dir+'trained_model/HAND_GEN_GGNN_2019-08-23-10-19-19_19476_best_model.pickle', 'rb') as in_file:
-        data_to_load = pickle.load(in_file)
-    model.load_weights(data_to_load['weights'])
+    # with open(save_dataset_dir+'trained_model/HAND_GEN_GGNN_2019-08-23-21-00-44_27983_best_model.pickle', 'rb') as in_file:
+    #     data_to_load = pickle.load(in_file)
+    # model.load_weights(data_to_load['weights'])
     model.train(quiet=args.get('--quiet'), tf_summary_path=save_dataset_dir+'tensorboard')
 
     if args.get('--run-test'):
